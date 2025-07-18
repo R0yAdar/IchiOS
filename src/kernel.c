@@ -2,9 +2,37 @@
 #include "core/interrupts/idt.h"
 #include "core/interrupts/x86_pic.h"
 #include "core/interrupts/x86_pit.h"
-
+#include "core/stdint.h"
 
 #define ARRAY_SIZE(arr) ((int)sizeof(arr) / (int)sizeof((arr)[0]))
+
+
+typedef struct multiboot_info_t {
+
+	uint32_t	m_flags;
+	uint32_t	m_memoryLo;
+	uint32_t	m_memoryHi;
+	uint32_t	m_bootDevice;
+	uint32_t	m_cmdLine;
+	uint32_t	m_modsCount;
+	uint32_t	m_modsAddr;
+	uint32_t	m_syms0;
+	uint32_t	m_syms1;
+	uint32_t	m_syms2;
+	uint32_t	m_mmap_length;
+	uint32_t	m_mmap_addr;
+	uint32_t	m_drives_length;
+	uint32_t	m_drives_addr;
+	uint32_t	m_config_table;
+	uint32_t	m_bootloader_name;
+	uint32_t	m_apm_table;
+	uint32_t	m_vbe_control_info;
+	uint32_t	m_vbe_mode_info;
+	uint16_t	m_vbe_mode;
+	uint32_t	m_vbe_interface_addr;
+	uint16_t	m_vbe_interface_len;
+} multiboot_info;
+
 
 /*
 0xA0000 - 0xBFFFF Video Memory used for graphics modes
@@ -12,7 +40,7 @@
 0xB8000 - 0xBFFFF Color text mode and CGA compatible graphics modes
 */
 
-void _start_kernel(void) {
+void _start_kernel(multiboot_info* info) {
 	vga_clear_screen();
 
 	const char loading_message[] = "Ichi kernel loading...";

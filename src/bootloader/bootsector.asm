@@ -46,8 +46,9 @@ read_disk_sectors:
 	jc handle_disk_error
 
 ignore_disk_error:
-	SECOND_STAGE_ADDRESS equ 0x7c00 + 512
-	jmp 0:SECOND_STAGE_ADDRESS
+	;SECOND_STAGE_ADDRESS equ 0x7c00 + 512
+	extern stage2_start
+	jmp 0:stage2_start
 
 handle_disk_error:
 	cmp word [dap_sectors_num], SECTORS_LOAD_COUNT
