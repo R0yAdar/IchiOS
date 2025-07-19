@@ -52,6 +52,7 @@ xor		ebx, ebx
 mov		eax, 0x0
 mov		es, ax
 mov		di, 0x4000
+mov dword [multiboot_info.mmap_addr], 0x4000
 call	BiosGetMemoryMap
 
 mov eax, cr0

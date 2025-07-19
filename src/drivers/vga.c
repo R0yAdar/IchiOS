@@ -1,5 +1,11 @@
 #include "vga.h"
 
+/*
+0xA0000 - 0xBFFFF Video Memory used for graphics modes
+0xB0000 - 0xB7777 Monochrome Text mode
+0xB8000 - 0xBFFFF Color text mode and CGA compatible graphics modes
+*/
+
 void vga_put(vga_text_input* input) {
   volatile char *vga_buf = (char *)0xb8000;
 

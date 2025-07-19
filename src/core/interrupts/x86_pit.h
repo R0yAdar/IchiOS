@@ -7,7 +7,7 @@
 #define PIT_COMMAND_PORT 0x43
 
 /* Magic values */ 
-#define PIT_OSCILLATOR_SIGNAL_HZ 1193182
+#define PIT_OSCILLATOR_SIGNAL_HZ 1193182U
 
 void init_pit();
 
