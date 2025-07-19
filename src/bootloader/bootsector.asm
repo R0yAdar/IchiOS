@@ -7,17 +7,95 @@ global __start
 __start:
 	mov [drive_number], dl
 	
-	mov bx, startup_message
+	mov bx, startup_msg
 	call print_string
 	
 	mov si, disk_address_packet
-	call read_disk_sectors
-	
-	
+	call load_disk_sectors
+
 end:
 	hlt
 	jmp end
 	
+load_disk_sectors:
+	; kernel_end is a symbol that marks the end of the kernel
+	extern kernel_end
+	mov eax, kernel_end
+
+	; the bootsector is loaded at 0x7c00
+	; the stage2+kernel are right after - starting from 0x7e00
+	sub eax, 0x7e00
+	shr eax, 9
+	mov [dap_sectors_num], ax
+	mov [sectors_load_count], ax
+
+	mov ah, 0x42 ; "extended read"
+	mov dl, [drive_number]
+	int 0x13
+
+	mov bx, read_sectors_msg1
+	call print_string
+
+	mov ax, [dap_sectors_num]
+	call print_int
+
+	mov bx, read_sectors_msg2
+	call print_string
+
+	mov ax, [sectors_load_count]
+	call print_int
+
+	mov bx, read_sectors_msg3
+	call print_string
+	
+	jc handle_disk_error
+
+ignore_disk_error:
+	mov bx, press_any_key_msg
+	call print_string
+	
+	mov ah, 0x00
+	int 0x16
+
+	extern stage2_start
+	jmp 0:stage2_start
+
+handle_disk_error:
+	mov ax, [sectors_load_count]
+	cmp word [dap_sectors_num], ax
+	jle ignore_disk_error
+	
+	mov bx, error_reading_disk_msg
+	call print_string
+
+; prints int16 from ax
+print_int:
+	pusha
+	mov bx, int_buffer + 4
+
+print_int_loop:
+	cmp bx, int_buffer - 1
+	je print_int_end
+	xor dx, dx
+	push bx
+	
+	mov bx, 10
+	div bx
+	
+	pop bx
+	add dl, '0'
+	mov [bx], dl
+	dec bx
+	jmp print_int_loop
+
+print_int_end:
+	mov bx, int_buffer
+	call print_string
+	popa
+	ret
+
+
+; prints string from bx
 print_string:
 	pusha
 	mov ah, 0x0e
@@ -37,42 +115,22 @@ print_string_end:
 	popa
 	ret
 
-
-read_disk_sectors:
-	mov ah, 0x42 ; "extended read"
-	mov dl, [drive_number]
-	int 0x13
-	
-	jc handle_disk_error
-
-ignore_disk_error:
-	;SECOND_STAGE_ADDRESS equ 0x7c00 + 512
-	extern stage2_start
-	jmp 0:stage2_start
-
-handle_disk_error:
-	cmp word [dap_sectors_num], SECTORS_LOAD_COUNT
-	jle ignore_disk_error
-	
-	mov bx, error_reading_disk_msg
-	call print_string
-	
-
-	
-	
-	align 4
+; data segment
+align 4
 disk_address_packet:
 	db 0x10 ; size of struct
 	db 0 ; unused
 dap_sectors_num:
-	dw SECTORS_LOAD_COUNT ; number of sectors to read
+	dw 0 ; number of sectors to read
 	dd 0x7c00 + 512 ; right after our bootsector
 	dq 1 ; sector to start at (skip the bootsector)
 
-
+int_buffer: db '0', '0', '0', '0', '0', 0
+sectors_load_count dw 0
 drive_number: db 0
-startup_message: db "Starting up - Ichi...", 0
+read_sectors_msg1: db "Read ", 0
+read_sectors_msg2: db " out of ", 0
+read_sectors_msg3: db " requested sectors.", 13, 10,0
+startup_msg: db "Starting up - Ichi...", 13, 10, 0
+press_any_key_msg: db "Press any key to continue...", 13, 10, 0
 error_reading_disk_msg: db "Error: failed to read disk with 0x13/ah=0x42", 13, 10, 0
-
-
-SECTORS_LOAD_COUNT equ 128
