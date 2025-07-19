@@ -1,8 +1,8 @@
-#include "core/graphics/vga.h"
 #include "core/interrupts/idt.h"
 #include "core/interrupts/x86_pic.h"
 #include "core/interrupts/x86_pit.h"
-#include "core/stdint.h"
+#include "stdint.h"
+#include "vga.h"
 
 #define ARRAY_SIZE(arr) ((int)sizeof(arr) / (int)sizeof((arr)[0]))
 

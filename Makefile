@@ -9,6 +9,9 @@ CFLAGS := -std=gnu99 -ffreestanding -m64 -mno-red-zone -fno-builtin -nostdinc -W
 SRC_DIR := src
 BUILD_DIR := build
 
+INCLUDE_DIRS := src/include src/drivers/include
+CFLAGS += $(addprefix -I,$(INCLUDE_DIRS))
+
 # Recursively gather source files
 rwildcard = $(foreach d, $(wildcard $1*), $(call rwildcard, $d/, $2) $(filter $(subst *,%,$2), $d))
 

@@ -1,7 +1,7 @@
-#include "../stdint.h"
+#include "stdint.h"
 #include "../hal.h"
-#include "../graphics/vga.h"
 #include "x86_idt.h"
+#include "vga.h"
 
 #pragma pack (push, 1)
 

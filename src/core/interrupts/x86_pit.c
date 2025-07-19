@@ -1,7 +1,7 @@
-#include "x86_pit.h"
-#include "../graphics/vga.h"
 #include "../cpu/ports.h"
+#include "x86_pit.h"
 #include "x86_pic.h"
+#include "vga.h"
 
 long long current_time = 0;
 long long current_char = 0;
