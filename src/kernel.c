@@ -54,11 +54,27 @@ void _start_kernel(multiboot_info* info) {
 	++input.y;
 	vga_put(&input);
 
-	return;
+	input.text = int_to_str(info->m_mmap_addr);
+	++input.y;
+	vga_put(&input);
+
 	input.text = "Memory region detected";
 	memory_region* regions = (memory_region*)info->m_mmap_addr;
-	while(regions->address && input.y < 10) {
-		++input.y;
+	int counter = 0;
+
+	input.text = int_to_str(info->m_mmap_length);
+	input.y = 19;
+	vga_put(&input);
+
+	for(int i =0; i < info->m_mmap_length; ++i) {
+		// ++input.y;
+		// vga_put(&input);
+		++counter;
+		input.text = int_to_str(counter);
+		input.y = 20;
 		vga_put(&input);
+		++regions;
 	}
+
+	
 }

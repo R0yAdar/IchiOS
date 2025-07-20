@@ -38,13 +38,14 @@ endstruc
 ;---------------------------------------------
 ;	Get memory map from bios
 ;	/in es:di->destination buffer for entries
-;	/ret bp=entry count
+;	/in es:si->destination for count of enteries (dword)
 ;---------------------------------------------
 
 BiosGetMemoryMap:
 	pushad
 	xor		ebx, ebx
-	xor		bp, bp									; number of entries stored here
+	mov dword [es:si], 0
+
 	mov		edx, 'PAMS'								; 'SMAP'
 	mov		eax, 0xe820
 	mov		ecx, 24									; memory map entry struct is 24 bytes
@@ -69,7 +70,10 @@ BiosGetMemoryMap:
 	mov		ecx, [es:di + MemoryMapEntry.length + 4]; get length (upper dword)
 	jecxz	.skip_entry								; if length is 0 skip it
 .good_entry:
-	inc		bp										; increment entry count
+	mov eax, [es:si]
+	inc eax
+	mov [es:si], eax
+
 	add		di, 24									; point di to next entry in buffer
 .skip_entry:
 	cmp		ebx, 0									; if ebx return is 0, list is done
