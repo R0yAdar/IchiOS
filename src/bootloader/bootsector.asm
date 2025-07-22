@@ -53,7 +53,8 @@ load_disk_sectors:
 ignore_disk_error:
 	mov bx, press_any_key_msg
 	call print_string
-	
+
+	; wait for key	
 	mov ah, 0x00
 	int 0x16
 

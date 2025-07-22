@@ -27,12 +27,13 @@ typedef struct multiboot_info_t {
 	uint16_t	m_vbe_interface_len;
 } multiboot_info;
 
+#pragma pack(push, 1)
 typedef struct memory_region_t {
-
-	uint64_t	address;
-    uint64_t    size;
-	uint32_t	type;
-	uint32_t	acpi_3_0;
+    uint64_t address;
+    uint64_t size;
+    uint32_t type;
+    uint32_t extended_attributes;
 } memory_region;
+#pragma pack(pop)
 
 #endif

@@ -1,5 +1,13 @@
 #include "str.h"
 
+int strlen(const char* text) {
+    int i = 0;
+
+    while(text[i++] != 0){}
+
+    return i - 1;
+}
+
 const char* int_to_str(long long value){
     static char buffer[20];
     char pos = 0;

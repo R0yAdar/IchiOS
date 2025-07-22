@@ -44,17 +44,19 @@ lgdt [gdt32_pseudo_descriptor]
 
 xor		eax, eax
 xor		ebx, ebx
-; call	BiosGetMemorySize64MB
 
-; mov		word [boot_info+multiboot_info.memoryHi], bx
-; mov		word [boot_info+multiboot_info.memoryLo], ax
+call	BiosGetMemorySize64MB
+
+mov	dword [multiboot_info.memoryHi], ebx
+mov	dword [multiboot_info.memoryLo], eax
+
+
 
 mov		eax, 0x0
 mov		es, ax
-mov		di, 0x4000
-mov dword [multiboot_info.mmap_addr], 0x4000
+mov		di, MMAP_ADDRESS
+mov dword [multiboot_info.mmap_addr], MMAP_ADDRESS
 mov 	si, multiboot_info.mmap_length
-
 call	BiosGetMemoryMap
 
 mov eax, cr0
@@ -267,6 +269,8 @@ start_long_mode:
 	mov rsp, stack_top
 	and rsp, 0xFFFFFFFFFFFFFFF0  ; align to 16 bytes
 
+	mov rdi, MMAP_ADDRESS
+
 	; resolved when linking with kernel.c
 	extern _start_kernel
 	mov rdi, [boot_info]
@@ -274,6 +278,9 @@ start_long_mode:
 end64:
 	hlt
 	jmp end64
+
+
+MMAP_ADDRESS equ 0x5000
 	
 stage2_msg: db "Hello from stage 2", 13, 10, 0
 stage2_protected_msg: db "Hello from protected mode!", 13, 10, 0

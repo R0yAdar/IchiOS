@@ -5,6 +5,7 @@
 #include "vga.h"
 #include "multiboot.h"
 #include "str.h"
+#include "print.h"
 
 #define ARRAY_SIZE(arr) ((int)sizeof(arr) / (int)sizeof((arr)[0]))
 
@@ -60,21 +61,35 @@ void _start_kernel(multiboot_info* info) {
 
 	input.text = "Memory region detected";
 	memory_region* regions = (memory_region*)info->m_mmap_addr;
-	int counter = 0;
 
-	input.text = int_to_str(info->m_mmap_length);
-	input.y = 19;
-	vga_put(&input);
+	print("Memory LOW: "); printiln(info->m_memoryLo);
+	print("Memory HIGH: "); printiln(info->m_memoryHi);
+
+
+	print("Starting from ");
+	printiln(info->m_mmap_addr);
+
+	print("Length is ");
+	printiln(info->m_mmap_length);
+
+	/*
+	for(uint32_t start = info->m_mmap_addr; 
+		start < info->m_mmap_addr + info->m_mmap_length * sizeof(memory_region);
+		++start){
+			*((char*)start) = 0;
+		}
+	*/
+	
 
 	for(int i =0; i < info->m_mmap_length; ++i) {
-		// ++input.y;
-		// vga_put(&input);
-		++counter;
-		input.text = int_to_str(counter);
-		input.y = 20;
-		vga_put(&input);
+		print("MEMORY REGION DETECTED FROM -> ");
+
+		printi(regions->address);
+		print("  SIZE:");
+		printi(regions->size);
+		print(" TYPE: ");
+		printiln(regions->type);
+
 		++regions;
 	}
-
-	
 }
