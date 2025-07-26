@@ -6,6 +6,7 @@
 #include "multiboot.h"
 #include "str.h"
 #include "print.h"
+#include "pmm.h"
 
 #define ARRAY_SIZE(arr) ((int)sizeof(arr) / (int)sizeof((arr)[0]))
 
@@ -62,9 +63,8 @@ void _start_kernel(multiboot_info* info) {
 	input.text = "Memory region detected";
 	memory_region* regions = (memory_region*)info->m_mmap_addr;
 
-	print("Memory LOW: "); printiln(info->m_memoryLo);
-	print("Memory HIGH: "); printiln(info->m_memoryHi);
-
+	print("Memory LOW: "); printiln(info->m_memoryLo * 1024);
+	print("Memory HIGH: "); printiln(info->m_memoryHi * 64 * 1024);
 
 	print("Starting from ");
 	printiln(info->m_mmap_addr);
@@ -92,4 +92,20 @@ void _start_kernel(multiboot_info* info) {
 
 		++regions;
 	}
+
+	pmm_context context;
+
+	context.regions = (memory_region*)info->m_mmap_addr;
+	context.regions_count = info->m_mmap_length;
+
+	pmm_init(&context);
+
+	println("INIT PMM MEMORY MANAGER");
+
+	void* memory_block = pmm_alloc();
+	print("GOT: "); printiln(memory_block);
+	// println("FREED");
+	// pmm_free(memory_block);
+	memory_block = pmm_alloc();
+	print("GOT: "); printiln(memory_block);
 }

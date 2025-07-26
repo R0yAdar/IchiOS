@@ -4,7 +4,9 @@
 typedef struct multiboot_info_t {
 
 	uint32_t	m_flags;
+	// Amount of low memory (KB)
 	uint32_t	m_memoryLo;
+	// Amount of high memory (64KB)
 	uint32_t	m_memoryHi;
 	uint32_t	m_bootDevice;
 	uint32_t	m_cmdLine;
@@ -35,5 +37,8 @@ typedef struct memory_region_t {
     uint32_t extended_attributes;
 } memory_region;
 #pragma pack(pop)
+
+#define MEMORY_REGION_AVAILABLE 1
+#define MEMORY_REGION_RESERVED 2
 
 #endif
