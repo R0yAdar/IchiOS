@@ -3,8 +3,9 @@
 # Tools and flags
 NASM := nasm -f elf64
 CC := gcc
-CFLAGS := -std=gnu99 -ffreestanding -m64 -mno-red-zone -fno-builtin -nostdinc -Wall -Wextra
-
+CFLAGS := -std=gnu99 -ffreestanding -m64 -mno-red-zone -fno-builtin -nostdinc -Wall -Wextra -fno-pic -fno-pie -mcmodel=large
+LDFLAGS := -nostdlib -no-pie
+# -mcmodel=large
 # Directory structure
 SRC_DIR := src
 BUILD_DIR := build
@@ -34,14 +35,17 @@ boot: $(BOOT_IMAGE)
 	qemu-system-x86_64 -no-reboot -drive file=$<,format=raw,index=0,media=disk
 
 # Link object files into ELF
-$(BUILD_DIR)/linked.o: $(OBJS)
+$(BUILD_DIR)/linked.elf: $(OBJS)
 	@mkdir -p $(dir $@)
-	ld -T linker.ld -o $@ $^
+	ld $(LDFLAGS) -T linker.ld -o $@ $^ 
 
 # Convert ELF to flat binary
-$(BOOT_IMAGE): $(BUILD_DIR)/linked.o
+$(BOOT_IMAGE): $(BUILD_DIR)/linked.elf
 	@mkdir -p $(dir $@)
-	objcopy -O binary $< $@
+	objcopy -O binary --only-section=.boot_sector --only-section=.boot_sign build/linked.elf build/boot_sector.bin
+	objcopy -O binary --only-section=.stage2 build/linked.elf build/stage2.bin
+	objcopy -O binary --only-section=.text --only-section=.data --only-section=.rodata build/linked.elf build/kernel.bin
+	cat build/boot_sector.bin build/stage2.bin build/kernel.bin > build/boot_image
 
 # Compile assembly
 $(BUILD_DIR)/%.asm.o: $(SRC_DIR)/%.asm

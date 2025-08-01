@@ -14,6 +14,7 @@
 void _start_kernel(multiboot_info* info) {
 	vga_clear_screen();
 
+
 	const char loading_message[] = "Ichi kernel loading...";
 	const char configured_pic_message[] = "Ichi kernel enabled PIC...";
 	const char enabled_pit_message[] = "Ichi kernel enabled PIT...";
@@ -21,9 +22,7 @@ void _start_kernel(multiboot_info* info) {
 	vga_text_input input  = {0, 0, loading_message, 0x09};
 	vga_put(&input);
 
-	input.text = configured_pic_message;
-	++input.y;
-	vga_put(&input);
+	printxln(&loading_message);
 
 	init_idt();
 
@@ -33,7 +32,12 @@ void _start_kernel(multiboot_info* info) {
 
 	// int b = a / 0;
 
+
+
 	init_pic();
+	input.text = configured_pic_message;
+	++input.y;
+	vga_put(&input);
 	init_pit();
 	
 	asm volatile ("sti" ::: "memory");
@@ -62,31 +66,22 @@ void _start_kernel(multiboot_info* info) {
 
 	input.text = "Memory region detected";
 	memory_region* regions = (memory_region*)info->m_mmap_addr;
-
-	print("Memory LOW: "); printiln(info->m_memoryLo * 1024);
-	print("Memory HIGH: "); printiln(info->m_memoryHi * 64 * 1024);
+	
+	print("Memory LOW: "); printxln(info->m_memoryLo * 1024);
+	print("Memory HIGH: "); printxln(info->m_memoryHi * 64 * 1024);
 
 	print("Starting from ");
-	printiln(info->m_mmap_addr);
+	printxln(info->m_mmap_addr);
 
 	print("Length is ");
-	printiln(info->m_mmap_length);
-
-	/*
-	for(uint32_t start = info->m_mmap_addr; 
-		start < info->m_mmap_addr + info->m_mmap_length * sizeof(memory_region);
-		++start){
-			*((char*)start) = 0;
-		}
-	*/
-	
+	printxln(info->m_mmap_length);	
 
 	for(int i =0; i < info->m_mmap_length; ++i) {
 		print("MEMORY REGION DETECTED FROM -> ");
 
-		printi(regions->address);
+		printx(regions->address);
 		print("  SIZE:");
-		printi(regions->size);
+		printx(regions->size);
 		print(" TYPE: ");
 		printiln(regions->type);
 
@@ -103,9 +98,9 @@ void _start_kernel(multiboot_info* info) {
 	println("INIT PMM MEMORY MANAGER");
 
 	void* memory_block = pmm_alloc();
-	print("GOT: "); printiln(memory_block);
+	print("GOT: "); printxln(memory_block);
 	// println("FREED");
 	// pmm_free(memory_block);
 	memory_block = pmm_alloc();
-	print("GOT: "); printiln(memory_block);
+	print("GOT: "); printxln(memory_block);
 }

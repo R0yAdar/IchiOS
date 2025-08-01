@@ -2,8 +2,7 @@ MEMORY
 {
 	boot_sector (rwx) : ORIGIN = 0x7c00, LENGTH = 512
 	stage2 (rwx) : ORIGIN = 0x7e00, LENGTH = 1024
-	kernel (rwx) : ORIGIN = 0x8200, LENGTH = 0x10000
-	kernel_end (rwx): ORIGIN = 0x18200, LENGTH = 1
+	kernel (rwx) : ORIGIN = 0xffffffff80008200, LENGTH = 0x10000
 }
 
 ENTRY(__start)
@@ -16,14 +15,24 @@ SECTIONS
 		BYTE(0x55)
 		BYTE(0xaa)
 	} > boot_sector
-	.stage2 : { *(.stage2); } > stage2
+	
+	.stage2 :
+	{
+		*(.stage2)
+		. = ORIGIN(stage2) + LENGTH(stage2) - 1;
+		BYTE(0)
+	} > stage2
+    
+	. = 0xffffffff80008200;
+
 	.text : { *(.text); } > kernel
 	.data : { *(.data); } > kernel
     .rodata : { *(.rodata); } > kernel
     .bss :
     {
+		__bss_start = .;
         *(.bss)
         *(COMMON)
+		__bss_end = .;
     } > kernel
-	.kernel_end : { *(.kernel_end); } > kernel_end
 }

@@ -19,13 +19,14 @@ end:
 	
 load_disk_sectors:
 	; kernel_end is a symbol that marks the end of the kernel
-	extern kernel_end
-	mov eax, kernel_end
+	;extern kernel_end
+	;mov eax, kernel_end
 
 	; the bootsector is loaded at 0x7c00
 	; the stage2+kernel are right after - starting from 0x7e00
-	sub eax, 0x7e00
-	shr eax, 9
+	;sub eax, 0x7e00
+	;shr eax, 9
+	mov eax, 100
 	mov [dap_sectors_num], ax
 	mov [sectors_load_count], ax
 

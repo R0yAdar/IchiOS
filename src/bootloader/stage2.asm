@@ -89,7 +89,7 @@ print_string_end:
 
 start_prot_mode:
 
-mov esp, stack_top
+mov esp, 0x6000 ;stack_top
 
 mov ax, DATA_SEG32
 mov ds, ax
@@ -222,6 +222,7 @@ build_page_table:
 	PAGE64_PAGE_SIZE equ 0x1000
 	PAGE64_TAB_SIZE equ 0x1000
 	PAGE64_TAB_ENT_NUM equ 512
+	PAGE64_ENTRY_SIZE equ 8
 	
 	
     ;; Initialize all four tables to 0. If the present flag is cleared, all other bits in any
@@ -237,13 +238,14 @@ build_page_table:
 	mov edi, ebx ; start of table
 	; hackish lea
 	lea eax, [edi + (PAGE64_TAB_SIZE | 11b)] ; set r/w & present flags
-	mov dword [edi], eax
 	
-	;
+	mov dword [edi], eax
+	mov dword [edi + 0x1FF * PAGE64_ENTRY_SIZE], eax
 	
 	add edi, PAGE64_TAB_SIZE
 	add eax, PAGE64_TAB_SIZE ; we put the next table right after
 	mov dword [edi], eax 
+	mov dword [edi + 0x1FE * PAGE64_ENTRY_SIZE], eax
 	
 	add edi, PAGE64_TAB_SIZE
 	add eax, PAGE64_TAB_SIZE ; we put the next table right after
@@ -258,7 +260,7 @@ build_page_table:
 		mov dword [edi], ebx
 		add ebx, PAGE64_PAGE_SIZE
 		
-		add edi, 8
+		add edi, PAGE64_ENTRY_SIZE
 		loop set_page_table_entry
 	popa
 	ret
@@ -274,7 +276,9 @@ start_long_mode:
 	; resolved when linking with kernel.c
 	extern _start_kernel
 	mov rdi, [boot_info]
-	call _start_kernel
+
+	mov rax, _start_kernel
+	call rax
 end64:
 	hlt
 	jmp end64
