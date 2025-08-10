@@ -22,13 +22,14 @@ SECTIONS
 		. = ORIGIN(stage2) + LENGTH(stage2) - 1;
 		BYTE(0)
 	} > stage2
-    
-	. = 0xffffffff80008200;
+
+	. = ORIGIN(kernel);
+	__kernel_origin = .;
 
 	.text : { *(.text); } > kernel
 	.data : { *(.data); } > kernel
     .rodata : { *(.rodata); } > kernel
-    .bss :
+    .bss ALIGN(16) :
     {
 		__bss_start = .;
         *(.bss)

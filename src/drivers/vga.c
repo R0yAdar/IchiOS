@@ -7,7 +7,7 @@
 */
 
 void vga_put(vga_text_input* input) {
-  volatile char *vga_buf = (char *)0xb8000;
+  volatile char *vga_buf = (char *) 0xffffffff800b8000;
 
   vga_buf += (input->y * VGA_COLUMNS_NUM + input->x) * 2;
 

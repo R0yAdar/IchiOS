@@ -7,11 +7,30 @@
 #include "str.h"
 #include "print.h"
 #include "pmm.h"
+#include "err.h"
 
 #define ARRAY_SIZE(arr) ((int)sizeof(arr) / (int)sizeof((arr)[0]))
 
+int x;
+
+void __early_zero_bss(void* bss_start, void* bss_end) {
+    uint64_t* ptr = (uint64_t*)bss_start;
+    uint64_t* end = (uint64_t*)bss_end;
+
+    while (ptr < end) {
+        *ptr++ = 0;
+    }
+}
 
 void _start_kernel(multiboot_info* info) {
+	extern __bss_start;
+	extern __bss_end;
+
+	// __early_zero_bss(&__bss_start, &__bss_end);
+
+	extern bitmap;
+	extern __kernel_origin;
+
 	vga_clear_screen();
 
 
@@ -19,10 +38,7 @@ void _start_kernel(multiboot_info* info) {
 	const char configured_pic_message[] = "Ichi kernel enabled PIC...";
 	const char enabled_pit_message[] = "Ichi kernel enabled PIT...";
 
-	vga_text_input input  = {0, 0, loading_message, 0x09};
-	vga_put(&input);
-
-	printxln(&loading_message);
+	println(loading_message);
 
 	init_idt();
 
@@ -30,41 +46,17 @@ void _start_kernel(multiboot_info* info) {
 
 	volatile int a = 5;
 
-	// int b = a / 0;
-
-
-
 	init_pic();
-	input.text = configured_pic_message;
-	++input.y;
-	vga_put(&input);
+	
+	println(configured_pic_message);
+
 	init_pit();
 	
 	asm volatile ("sti" ::: "memory");
 
-	input.text = enabled_pit_message;
-	++input.y;
-	vga_put(&input);
 
-	++input.y;
+	println(enabled_pit_message);
 
-	input.text = int_to_str(12406378);
-	++input.y;
-	vga_put(&input);
-
-	input.text = int_to_str(124506378);
-	++input.y;
-	vga_put(&input);
-
-	input.text = "brah.";
-	++input.y;
-	vga_put(&input);
-
-	input.text = int_to_str(info->m_mmap_addr);
-	++input.y;
-	vga_put(&input);
-
-	input.text = "Memory region detected";
 	memory_region* regions = (memory_region*)info->m_mmap_addr;
 	
 	print("Memory LOW: "); printxln(info->m_memoryLo * 1024);
@@ -92,15 +84,20 @@ void _start_kernel(multiboot_info* info) {
 
 	context.regions = (memory_region*)info->m_mmap_addr;
 	context.regions_count = info->m_mmap_length;
+	// Size of actual kernel + the offset of it in memory (to also preserve bootloader + stage2)
+	context.kernel_ram_size = (&__bss_end - &__kernel_origin) + 0x8200;
+	print("Kernel ram size: "); printxln(context.kernel_ram_size);
 
 	pmm_init(&context);
 
 	println("INIT PMM MEMORY MANAGER");
 
-	void* memory_block = pmm_alloc();
-	print("GOT: "); printxln(memory_block);
-	// println("FREED");
-	// pmm_free(memory_block);
-	memory_block = pmm_alloc();
-	print("GOT: "); printxln(memory_block);
+	print("PML4 is at: "); printxln(pmm_get_pdbr());
+
+	print("bitmap: "); printxln(&bitmap);
+	print("kernel origin: "); printxln(&__kernel_origin);
+	print("kernel size on ram: "); printxln(&__bss_end - &__kernel_origin);
+	
+	void* phys_address = pmm_alloc();
+	print("Phys address"); printxln(phys_address);
 }

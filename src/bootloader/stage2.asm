@@ -101,7 +101,7 @@ mov gs, ax
 mov bx, stage2_protected_msg
 call print_string32
 
-mov ebx, 0x1000
+mov ebx, START_OF_PAGE_TABLES
 call build_page_table
 mov cr3, ebx
 
@@ -284,8 +284,9 @@ end64:
 	jmp end64
 
 
+START_OF_PAGE_TABLES equ 0x1000 ; goes until 0x5000 (0x1000 per tables)
 MMAP_ADDRESS equ 0x5000
-	
+
 stage2_msg: db "Hello from stage 2", 13, 10, 0
 stage2_protected_msg: db "Hello from protected mode!", 13, 10, 0
 a20_msg: db "Enabled A20 line!", 13, 10, 0

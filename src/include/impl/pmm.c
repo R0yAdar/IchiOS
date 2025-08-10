@@ -1,5 +1,6 @@
 #include "pmm.h"
 #include "cstring.h"
+#include "assembly.h"
 
 typedef enum block_status_t {
     BLOCK_STATUS_FREE = 0,
@@ -70,7 +71,7 @@ int pmm_init(pmm_context* context){
     }
     
     // reserve start of memory for kernel...
-    memset(&bitmap, BLOCK_STATUS_8CHUNK_USED, RESERVED_KERNEL_MEMORY_BYTES / 8 / 4096);
+    memset(&bitmap, BLOCK_STATUS_8CHUNK_USED, ((context->kernel_ram_size + 4095) / 4096 + 7) / 8);
 
     return 0;
 }
@@ -127,4 +128,12 @@ void pmm_free_blocks(void* start, uint32_t count) {
 
         bitmap[cell_index] = free_bit(bitmap[cell_index], bit_index);
     }
+}
+
+void* pmm_get_pdbr() {
+    return (void*)read_cr3();
+}
+
+void pmm_load_pdbr(void* phys) {
+    write_cr3((uint64_t)phys);
 }

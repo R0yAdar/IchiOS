@@ -66,7 +66,6 @@ void i86_install_ir(uint8_t index, idt_descriptor descriptor){
 int init_idt(){
     _idtr.limit = sizeof(idt_descriptor) * 256 -1;
     _idtr.base = (uint64_t)&_idt[0];
-    printxln(_idtr.base);
 
     i86_install_ir(0,  create_descriptor(isr0_handler));
     i86_install_ir(1,  create_descriptor(isr1_handler));

@@ -17,6 +17,7 @@ typedef struct pmm_context_t {
     memory_region* regions;
     uint32_t regions_count;
     pmm_strategy strategy;
+    uint32_t kernel_ram_size;
 } pmm_context;
     
 int     pmm_init(pmm_context* context);
@@ -28,5 +29,9 @@ void    pmm_free(void* page);
 void*   pmm_alloc_blocks(uint32_t count);
 
 void    pmm_free_blocks(void* start, uint32_t count);
+
+void*   pmm_get_pdbr();
+
+void    pmm_load_pdbr(void* phys);
 
 #endif

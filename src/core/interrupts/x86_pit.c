@@ -24,7 +24,7 @@ void pit_irq_handler() {
 
     pit_message[5] = current_char++;
 
-	vga_text_input input  = {0, 3, pit_message, 0x09};
+	vga_text_input input  = {VGA_COLUMNS_NUM - 20, 0, pit_message, 0x09};
 	vga_put(&input);
 
     input.text = "  ";
