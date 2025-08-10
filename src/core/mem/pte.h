@@ -1,12 +1,12 @@
 #include "stdint.h"
 
-#define PAGE_SIZE 4096
-
 typedef uint64_t pte_t;
 typedef uint8_t pte_flags_t;
 
+#define PAGE_SIZE 4096
+#define ZERO_PTE (pte_t)0
 
-enum x64_PTE : uint64_t {
+enum x64_PTE {
     x64_PTE_FLAG_PRESENT = 1,
     x64_PTE_FLAG_WRITEABLE = 2,
     x64_PTE_FLAG_USER_ACCESSIBLE = 4,
@@ -24,8 +24,11 @@ enum x64_PTE : uint64_t {
     x64_PTE_FLAG_NO_EXECUTE = 0x8000000000000000
 };
 
+#define DEFAULT_PTE (pte_t)(1 + 2)
+
 // address has to be 4096 byte aligned
 void assign_address(pte_t* pte, void* address) {
+    *pte &= (~x64_PTE_MASK_PHYSICAL_ADDRESS);
     *pte |= ((uint64_t)address & x64_PTE_MASK_PHYSICAL_ADDRESS);
 }
 

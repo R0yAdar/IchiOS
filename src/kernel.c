@@ -8,6 +8,7 @@
 #include "print.h"
 #include "pmm.h"
 #include "err.h"
+#include "core/mem/vmem.h"
 
 #define ARRAY_SIZE(arr) ((int)sizeof(arr) / (int)sizeof((arr)[0]))
 
@@ -100,4 +101,6 @@ void _start_kernel(multiboot_info* info) {
 	
 	void* phys_address = pmm_alloc();
 	print("Phys address"); printxln(phys_address);
+
+	init_vmem(info);
 }
