@@ -1,4 +1,4 @@
-#include "../cpu/ports.h"
+#include "assembly.h"
 #include "x86_pit.h"
 #include "x86_pic.h"
 #include "vga.h"

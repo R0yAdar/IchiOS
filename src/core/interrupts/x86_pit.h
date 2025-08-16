@@ -1,4 +1,5 @@
-#pragma once
+#ifndef X86_PIT_H
+#define X86_PIT_H
 
 /* PIT Ports */
 #define PIT_CHANNEL0_PORT 0x40
@@ -12,3 +13,5 @@
 void init_pit();
 
 void pit_handler();
+
+#endif

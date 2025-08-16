@@ -1,3 +1,6 @@
+#ifndef PTE_H
+#define PTE_H
+
 #include "stdint.h"
 
 typedef uint64_t pte_t;
@@ -39,3 +42,5 @@ void mark_present(pte_t* pte) {
 void mark_writeable(pte_t* pte) {
     *pte |= x64_PTE_FLAG_WRITEABLE;
 }
+
+#endif

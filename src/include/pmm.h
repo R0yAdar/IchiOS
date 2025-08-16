@@ -30,8 +30,8 @@ void*   pmm_alloc_blocks(uint32_t count);
 
 void    pmm_free_blocks(void* start, uint32_t count);
 
-void*   pmm_get_pdbr();
+void*   pmm_get_root_ptable();
 
-void    pmm_load_pdbr(void* phys);
+void    pmm_load_root_ptable(void* phys);
 
 #endif

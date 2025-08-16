@@ -39,7 +39,7 @@ gdt64_end:
 
 gdt64_pseudo_descriptor:
     dw gdt64_end - gdt64_start - 1
-    dd gdt64_start
+    dq gdt64_start
 
 CODE_SEG64 equ gdt64_code_segment - gdt64_start
 DATA_SEG64 equ gdt64_data_segment - gdt64_start

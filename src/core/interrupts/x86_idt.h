@@ -1,4 +1,5 @@
-
+#ifndef X86_IDT_H
+#define X86_IDT_H
 // Exception ISRs 0-31
 extern void isr0_handler();   // Divide-by-zero
 extern void isr1_handler();   // Debug
@@ -79,3 +80,5 @@ char* exception_messages[] = {
     "Reserved",
     "Reserved" // 31
 };
+
+#endif

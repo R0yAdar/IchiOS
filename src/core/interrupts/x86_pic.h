@@ -1,4 +1,3 @@
-#pragma once
 #ifndef X86_PIC_H
 #define X86_PIC_H
 
@@ -26,4 +25,5 @@
 #define PIC2_ATA_CHANNEL2 0x20
 
 void init_pic();
+
 #endif

@@ -1,6 +1,7 @@
 #include "pmm.h"
 #include "cstring.h"
 #include "assembly.h"
+#include "print.h"
 
 typedef enum block_status_t {
     BLOCK_STATUS_FREE = 0,
@@ -41,7 +42,7 @@ uint64_t find_first_free_bits(uint32_t* values, uint64_t maxlen, uint32_t count)
             ++free_count;
 
             if (free_count == count) {
-                return i - count;
+                return i - count + 1;
             }
         }
         else {
@@ -130,10 +131,10 @@ void pmm_free_blocks(void* start, uint32_t count) {
     }
 }
 
-void* pmm_get_pdbr() {
+void* pmm_get_root_ptable() {
     return (void*)read_cr3();
 }
 
-void pmm_load_pdbr(void* phys) {
+void pmm_load_root_ptable(void* phys) {
     write_cr3((uint64_t)phys);
 }

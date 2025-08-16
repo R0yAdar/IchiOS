@@ -1,5 +1,5 @@
 #include "x86_pic.h"
-#include "../cpu/ports.h"
+#include "assembly.h"
 
 
 void remap_pic() {
