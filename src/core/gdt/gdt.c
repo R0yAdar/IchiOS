@@ -1,7 +1,7 @@
 #include "gdt.h"
 #include "print.h"
 #include "assembly.h"
-#include "hal.h"
+#include "../hal.h"
 
 gdt_table table;
 gdt_ptr _gdt_ptr;

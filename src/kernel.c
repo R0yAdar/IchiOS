@@ -9,12 +9,14 @@
 #include "pmm.h"
 #include "err.h"
 #include "core/mem/vmem.h"
-#include "core/gdt.h"
+#include "core/gdt/gdt.h"
 #include "assembly.h"
 
 #define ARRAY_SIZE(arr) ((int)sizeof(arr) / (int)sizeof((arr)[0]))
 
-int x;
+extern __bss_start;
+extern __bss_end;
+extern __kernel_origin;
 
 void __early_zero_bss(void* bss_start, void* bss_end) {
     uint64_t* ptr = (uint64_t*)bss_start;
@@ -23,6 +25,16 @@ void __early_zero_bss(void* bss_start, void* bss_end) {
     while (ptr < end) {
         *ptr++ = 0;
     }
+}
+
+void __early_init_pmm(multiboot_info* info) {
+	pmm_context context;
+
+	context.regions = (memory_region*)info->m_mmap_addr;
+	context.regions_count = info->m_mmap_length;
+	// Size of actual kernel + the offset of it in memory (to also preserve bootloader + stage2)
+	context.kernel_ram_size = (&__bss_end - &__kernel_origin) + 0x8200;
+	pmm_init(&context);
 }
 
 void __early_init_stack() {
@@ -34,10 +46,6 @@ void __early_init_stack() {
 
 	set_rsp(stack_top);
 }
-
-extern __bss_start;
-extern __bss_end;
-extern __kernel_origin;
 
 void print_memory(multiboot_info* info) {
 	memory_region* regions = (memory_region*)info->m_mmap_addr;
@@ -65,6 +73,7 @@ void _start_kernel(multiboot_info* info) {
 	vga_clear_screen();
 	
 	__early_zero_bss(&__bss_start, &__bss_end);
+	__early_init_pmm(info);
 	__early_init_stack();
 
 	const char loading_message[] = "Ichi kernel loading...";
@@ -73,21 +82,11 @@ void _start_kernel(multiboot_info* info) {
 
 	println(loading_message);
 
-	pmm_context context;
-
-	context.regions = (memory_region*)info->m_mmap_addr;
-	context.regions_count = info->m_mmap_length;
-	// Size of actual kernel + the offset of it in memory (to also preserve bootloader + stage2)
-	context.kernel_ram_size = (&__bss_end - &__kernel_origin) + 0x8200;
-	pmm_init(&context);
-
 	println("INIT PMM MEMORY MANAGER");
 
 	init_idt();
 
 	syscall(0, 0);
-
-	volatile int a = 5;
 
 	init_pic();
 	

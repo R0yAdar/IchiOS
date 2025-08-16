@@ -4,31 +4,47 @@
 #include "print.h"
 #include "cstring.h"
 
+#define ENTRIES_PER_TABLE 512
+
+pte_t* allocate_from_pmm() {
+    pte_t* table = (pte_t*)pmm_alloc();
+    memset((void*)table, 0, PAGE_SIZE);
+    return table;
+}
+
+void print_table(pte_t* t) {
+    int count = 0;
+
+    for (int i = 0; i < ENTRIES_PER_TABLE; i++)
+    {
+        if (*(t + i) != 0) {
+            ++count;
+        }
+    }
+    
+    print("Table starting at: "); printx((void*)t); print(" Count is: "); printiln(count);
+}
+
 // creates new tables and maps first 2MB of memory to higher half kernel space
 ERROR_CODE init_vmem() {
-    pte_t* pml4 = (pte_t*)pmm_alloc();
-    memset((void*)pml4, 0, PAGE_SIZE);
-    
     pte_t pte = DEFAULT_PTE;
 
-    pte_t* level3 = (pte_t*)pmm_alloc();
-    memset((void*)level3, 0, PAGE_SIZE);
+    pte_t* pml4 = allocate_from_pmm();
+    pte_t* level3 = allocate_from_pmm();
+    pte_t* level2 = allocate_from_pmm();
+    pte_t* level1 = allocate_from_pmm();
+
     assign_address(&pte, level3);
-    
 
     *(pml4 + 0x1FF) = pte;
     
-    pte_t* level2 = (pte_t*)pmm_alloc();
-    memset((void*)level2, 0, PAGE_SIZE);
     assign_address(&pte, level2);
 
     *(level3 + 0x1FE) = pte;
 
-    pte_t* level1 = (pte_t*)pmm_alloc();
-    memset((void*)level1, 0, PAGE_SIZE);
     assign_address(&pte, level1);
     *level2 = pte;
-
+    
     char* current_phys_address = (char*)0x0;
 
     for (uint16_t i = 0; i < PAGE_SIZE / sizeof(pte_t); i++)
@@ -39,7 +55,7 @@ ERROR_CODE init_vmem() {
         
         current_phys_address += PAGE_SIZE;
     }
-
+    
     pmm_load_root_ptable(pml4);
     
     return SUCCESS;
