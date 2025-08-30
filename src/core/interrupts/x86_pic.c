@@ -1,5 +1,6 @@
 #include "x86_pic.h"
 #include "assembly.h"
+#include "stdint.h"
 
 
 void remap_pic() {
@@ -23,9 +24,9 @@ void remap_pic() {
 void init_pic() {
     remap_pic();
 
-    char pic1_enabled_irqs = PIC1_SYSTEM_TIMER;
+    uint8_t pic1_enabled_irqs = PIC1_SYSTEM_TIMER | PIC1_KEYBOARD_CONTROLLER;
     port_outb(PIC1_DATA_PORT, (~pic1_enabled_irqs));
 
-    char pic2_enabled_irqs = 0;
+    uint8_t pic2_enabled_irqs = 0;
     port_outb(PIC2_DATA_PORT, pic2_enabled_irqs);
 }

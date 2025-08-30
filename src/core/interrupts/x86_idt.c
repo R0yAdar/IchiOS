@@ -85,8 +85,9 @@ int init_idt(){
     
     // PIT
     i86_install_ir(32, idt_create_descriptor(isr32_handler));
+    i86_install_ir(33, idt_create_descriptor(isr33_handler));
 
-    for (int i = 33; i < 256; i++){
+    for (int i = 34; i < 256; i++){
         i86_install_ir(i, idt_create_descriptor(isr80_handler));
     }
 

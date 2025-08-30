@@ -34,6 +34,4 @@ void pit_irq_handler() {
     input.x += 2;
     input.text = int_to_str((++current_time) / 20);
     vga_put(&input);
-    
-    port_outb(PIC1_COMMAND_PORT, 0x20); // EOI (End of IRQ)
 }

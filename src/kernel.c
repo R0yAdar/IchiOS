@@ -8,9 +8,10 @@
 #include "print.h"
 #include "pmm.h"
 #include "err.h"
-#include "core/mem/vmem.h"
+#include "core/mem/vmm.h"
 #include "core/gdt/gdt.h"
 #include "assembly.h"
+#include "keyboard.h"
 
 #define ARRAY_SIZE(arr) ((int)sizeof(arr) / (int)sizeof((arr)[0]))
 
@@ -69,6 +70,18 @@ void print_memory(multiboot_info* info) {
 	print("kernel size on ram: "); printxln(&__bss_end - &__kernel_origin);
 }
 
+void key_callback(uint8_t scancode, BOOL pressed) {
+	char buffer[] = {0, 0};
+	if (pressed) {
+		uint32_t key = kybrd_key_to_ascii(scancode);
+		
+		if (key < 128) {
+			buffer[0] = key;
+			print(buffer);
+		}
+	}
+}
+
 void _start_kernel(multiboot_info* info) {
 	vga_clear_screen();
 	
@@ -96,9 +109,13 @@ void _start_kernel(multiboot_info* info) {
 	
 	println(enabled_pit_message);
 
+	kybrd_init();
+
+	kybrd_set_event_callback(key_callback);
+
 	init_gdt();
 
-	print_memory(info);
+	// print_memory(info);
 
 	init_vmem();
 

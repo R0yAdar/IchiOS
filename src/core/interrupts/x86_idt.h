@@ -37,6 +37,7 @@ extern void isr31_handler();  // Reserved
 // PIC
 
 extern void isr32_handler();  // PIT
+extern void isr33_handler();  // KEYBOARD
 
 // Custom
 

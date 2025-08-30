@@ -18,6 +18,10 @@ void write_cr3(uint64_t value) {
         : "memory");
 }
 
+void cli() {
+    	asm volatile ("cli" ::: "memory");
+}
+
 void sti() {
     	asm volatile ("sti" ::: "memory");
 }
@@ -42,14 +46,13 @@ void load_gdtr(void* gdtr) {
     );
 }
 
-char port_inb(char port){
-    char result;
+uint8_t port_inb(uint8_t port){
+    uint8_t result;
     asm volatile ("in %%dx, %%al" : "=a" (result) : "d" (port));
     return result;
 }
 
-
-void port_outb(char port, char data){
+void port_outb(uint8_t port, uint8_t data){
     asm volatile ("out %%al, %%dx" : : "a" (data), "d" (port));
 }
 
@@ -64,4 +67,11 @@ void load_idtr(idtr idtr) {
 void interrupt80(uint64_t arg1, void* arg2)
 {
     asm volatile( "int $0x80" :: "a"(arg1), "c"(arg2) : "memory" );
+}
+
+void flush_tlb(uint64_t address) 
+{
+    cli(); // TODO: check if this is needed
+    asm volatile("invlpg (%0)" ::"r" (address) : "memory");
+    sti();
 }

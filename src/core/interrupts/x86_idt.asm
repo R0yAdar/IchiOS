@@ -58,6 +58,10 @@ align 16
     extern %2
     call %2
 
+    ; Signal EOI (End of IRQ)
+    mov al, 0x20
+    out 0x20, al
+
     popall
     sti
 
@@ -124,6 +128,7 @@ define_exception_handler isr31_handler, general_exception_handler, 31
 
 ; External Devices ISRs (PIC)
 define_irq_handler isr32_handler, pit_irq_handler
+define_irq_handler isr33_handler, kybrd_irq_handler
 
 ; Custom ISRs
 define_isr_handler isr80_handler, sysCallC
