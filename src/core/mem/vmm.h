@@ -16,4 +16,6 @@ void    vmem_map_page(void* phys, void* virt);
 
 void*   kmalloc(size_t len);
 
+void    kfree(void* vaddr);
+
 #endif

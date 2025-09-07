@@ -21,7 +21,7 @@ uint32_t set_bit(uint32_t value, uint32_t index) {
 }
 
 uint32_t free_bit(uint32_t value, uint32_t index) {
-    return value | (~(1 << index));
+    return value & (~(1 << index));
 }
 
 uint32_t find_first_free_bit(uint32_t value) {
@@ -113,7 +113,7 @@ void* pmm_alloc_blocks(uint32_t count) {
         bitmap[cell_index] = set_bit(bitmap[cell_index], bit_index);
     }
     
-    return (index - count) * PMM_BLOCK_SIZE;
+    return (void*)((index - count) * PMM_BLOCK_SIZE);
 }
 
 void pmm_free_blocks(void* start, uint32_t count) {

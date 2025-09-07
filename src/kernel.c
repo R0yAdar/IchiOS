@@ -99,7 +99,7 @@ void _start_kernel(multiboot_info* info) {
 
 	init_idt();
 
-	syscall(0, 0);
+	//syscall(0, 0);
 
 	init_pic();
 	
@@ -119,6 +119,20 @@ void _start_kernel(multiboot_info* info) {
 
 	init_vmem();
 
+	void* p1 = kmalloc(16);
+
+	printxln(p1);
+
+	void* p2 = kmalloc(8);
+	kfree(p2);
+	printxln(p2);
+
+	void* p3 = kmalloc(8);
+
+	printxln(p3);
+
+	println("brah");
+	
 	sti();
 	
 	while(1) { hlt(); } // if we return to bootloader - we'll double fault
