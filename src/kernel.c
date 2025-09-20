@@ -12,12 +12,19 @@
 #include "core/gdt/gdt.h"
 #include "assembly.h"
 #include "keyboard.h"
+#include "core/hal.h"
 
 #define ARRAY_SIZE(arr) ((int)sizeof(arr) / (int)sizeof((arr)[0]))
+#define KERNEL_STACK_SIZE 4
+#define PAGE_SIZE 4096
+#define KERNEL_PHYS_OFFSET 0x8200
 
-extern __bss_start;
-extern __bss_end;
-extern __kernel_origin;
+extern uint64_t __bss_start;
+extern uint64_t __bss_end;
+extern uint64_t __kernel_origin;
+
+void* _top_of_kernel_stack = NULL;
+tss _tss = {0};
 
 void __early_zero_bss(void* bss_start, void* bss_end) {
     uint64_t* ptr = (uint64_t*)bss_start;
@@ -31,21 +38,24 @@ void __early_zero_bss(void* bss_start, void* bss_end) {
 void __early_init_pmm(multiboot_info* info) {
 	pmm_context context;
 
-	context.regions = (memory_region*)info->m_mmap_addr;
+	context.regions = (memory_region*)((uint64_t)info->m_mmap_addr);
 	context.regions_count = info->m_mmap_length;
 	// Size of actual kernel + the offset of it in memory (to also preserve bootloader + stage2)
-	context.kernel_ram_size = (&__bss_end - &__kernel_origin) + 0x8200;
+	context.kernel_ram_size = ((uint64_t)&__bss_end - (uint64_t)&__kernel_origin) + KERNEL_PHYS_OFFSET;
+	
 	pmm_init(&context);
 }
 
-void __early_init_stack() {
-	int stack_size = 4; // pages
-	void* stack = pmm_alloc_blocks(stack_size);
-	void* stack_top = (void*)((char*)stack + stack_size * 4096);
+void _rest_of_start();
 
-	print("Stack allocated from: "); printx(stack_top); print(" -> "); printxln(stack);
+void init_kernel_stack() {
+	void* stack = kpage_alloc(KERNEL_STACK_SIZE);
+	void* stack_top = (void*)((char*)stack + KERNEL_STACK_SIZE * PAGE_SIZE);
 
-	set_rsp(stack_top);
+	print("Stack allocated from: "); printx((uint64_t)stack_top); print(" -> "); printxln((uint64_t)stack);
+	_top_of_kernel_stack = stack_top;
+
+	switch_stack(stack_top, _rest_of_start);
 }
 
 void print_memory(multiboot_info* info) {
@@ -84,45 +94,46 @@ void key_callback(uint8_t scancode, BOOL pressed) {
 
 void _start_kernel(multiboot_info* info) {
 	vga_clear_screen();
+	println("Ichi kernel loading...");
 	
 	__early_zero_bss(&__bss_start, &__bss_end);
 	__early_init_pmm(info);
-	__early_init_stack();
-
-	const char loading_message[] = "Ichi kernel loading...";
-	const char configured_pic_message[] = "Ichi kernel enabled PIC...";
-	const char enabled_pit_message[] = "Ichi kernel enabled PIT...";
-
-	println(loading_message);
-
 	println("INIT PMM MEMORY MANAGER");
 
 	init_idt();
 
-	//syscall(0, 0);
-
 	init_pic();
 	
-	println(configured_pic_message);
+	println("Ichi kernel enabled PIC...");
 
 	init_pit();
 	
-	println(enabled_pit_message);
+	println("Ichi kernel enabled PIT...");
 
 	kybrd_init();
 
 	kybrd_set_event_callback(key_callback);
 
-	init_gdt();
+	println("Ichi kernel enabled KEYBOARD...");
 
-	// print_memory(info);
-
+	init_gdt(0, 0);
 	init_vmem();
 
-	void* p1 = kmalloc(16);
+	println("Ichi kernel setup VMM...");
 
+	init_kernel_stack();
+}
+
+void _rest_of_start() {
+	println("Ichi kernel reallocated stack...");
+	_tss = create_tss_segment(_top_of_kernel_stack);
+	init_gdt(&_tss, sizeof(tss));
+	//syscall(0, 0);
+
+	void* p1 = kmalloc(16);
 	printxln(p1);
 
+	
 	void* p2 = kmalloc(8);
 	kfree(p2);
 	printxln(p2);
@@ -130,11 +141,12 @@ void _start_kernel(multiboot_info* info) {
 	void* p3 = kmalloc(8);
 
 	printxln(p3);
+	size_t amount = allocate_umm(0, 4096 * 100);
 
-	println("brah");
-	
+	print("Allocated: "); printx(amount); println(" for user-space");	
+
 	sti();
-	
+
 	while(1) { hlt(); } // if we return to bootloader - we'll double fault
 	println("Out of loop");
 }

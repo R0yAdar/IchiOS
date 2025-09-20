@@ -6,6 +6,7 @@
 
 #define ENTRIES_PER_TABLE 512
 #define RAM_DIRECT_MAPPING_OFFSET 0xffff800000000000
+#define ALIGN_4KB(ptr) ((void*)((uint64_t)(ptr) & (~0xFFF)))
 
 typedef enum {
     PTABLE_LVL_PML4 = 4,
@@ -15,6 +16,7 @@ typedef enum {
 } PTABLE_LVL;
 
 pte_t* _root_table;
+BOOL _is_post_init = FALSE;
 
 typedef uint16_t ptable_index_t;
 
@@ -32,16 +34,20 @@ ptable_index_t offset_to_index(void* address, PTABLE_LVL lvl) {
     }
 }
 
+void* vphys_address(void* phys) {
+    return (void*)((uint64_t)phys | ((_is_post_init) ? (RAM_DIRECT_MAPPING_OFFSET) : 0));
+}
+
 pte_t* pte_get_index(pte_t* table, ptable_index_t index) { 
     // ASSERT index <= 512
 
-    return table  + index;
+    return (pte_t*)vphys_address(table + index);
 }
 
 void pte_put(pte_t* table, ptable_index_t index, pte_t value) { 
     // ASSERT index <= 512
 
-    *(table  + index) = value;
+    *((pte_t*)vphys_address(table  + index)) = value;
 }
 
 void print_table(pte_t* t, int level) {
@@ -57,10 +63,10 @@ void print_table(pte_t* t, int level) {
     {
         if (*(t + i) != 0) {
             print("Entry at: "); printx(i);
-            print(" pointing to -> "); printxln((uint64_t)get_address((t + i)));
+            print(" pointing to -> "); printxln((uint64_t)pte_get_address((t + i)));
             ++count;
             
-            print_table((pte_t*)get_address((t + i)), level - 1);
+            print_table((pte_t*)pte_get_address((t + i)), level - 1);
         }
 
         if (count > 3) {
@@ -75,14 +81,11 @@ void* canonify(void* address) {
         (void*)((~(0xffffull << 48)) & (uint64_t)address);
 }
 
-typedef enum  {
-    PTABLE_MAP_LEN_4KB
-} PTABLE_MAP_LEN;
-
-pte_t* __early_pt_allocate_into(pte_t* table_index_p) {
+pte_t* pt_allocate_into(pte_t* table_index_p) {
     pte_t entry = DEFAULT_PTE;
 
-    pte_t* ptable = (pte_t*)pmm_alloc();
+    pte_t* ptable = (pte_t*)((vphys_address(pmm_alloc())));
+
     memset((void*)ptable, 0, PAGE_SIZE);
     
     assign_address(&entry, ptable);
@@ -96,22 +99,20 @@ pte_t* pt_get_or_allocate_into(pte_t* table_index_p) {
     pte_t* addr;
 
     if (!(*table_index_p)) {
-        addr = __early_pt_allocate_into(table_index_p);
+        addr = pt_allocate_into(table_index_p);
     }
     else {
-        addr = (pte_t*)get_address(table_index_p);
+        addr = (pte_t*)vphys_address(pte_get_address(table_index_p));
     }
 
     return addr;
 }
 
-#define ALIGN_4KB(ptr) ((void*)((uint64_t)(ptr) & (~0xFFF)))
-
-ERROR_CODE simple_map(void* vaddr, void* paddr) {
+pte_t* init_mapping_entry(void* vaddr, void* paddr) {
     // can also assert
     vaddr = ALIGN_4KB(vaddr);
     paddr = ALIGN_4KB(paddr);
-
+    
     pte_t* pml4_entry = pte_get_index(_root_table, offset_to_index(vaddr, PTABLE_LVL_PML4));
     pte_t* pdpt = pt_get_or_allocate_into(pml4_entry);
 
@@ -123,9 +124,32 @@ ERROR_CODE simple_map(void* vaddr, void* paddr) {
 
     pte_t* pte = pte_get_index(pt, offset_to_index(vaddr, PTABLE_LVL_PTE));
     
-    (*pte) = DEFAULT_PTE;
-    assign_address(pte, paddr);
+    return pte;
 }
+
+ERROR_CODE simple_map(void* vaddr, void* paddr) {
+    pte_t* entry = init_mapping_entry(vaddr, paddr);
+
+    if (entry == NULL) return FAILED;
+
+    (*entry) = DEFAULT_PTE;
+    assign_address(entry, paddr);
+    
+    return SUCCESS;
+}
+
+ERROR_CODE um_map(void* vaddr, void* paddr) {
+    pte_t* entry = init_mapping_entry(vaddr, paddr);
+
+    if (entry == NULL) return FAILED;
+
+    (*entry) = DEFAULT_PTE;
+    mark_user_space(entry);
+    assign_address(entry, paddr);
+
+    return SUCCESS;
+}
+
 
 void direct_map_1gb() {
     void* vstart_addr = (uint8_t*)RAM_DIRECT_MAPPING_OFFSET;
@@ -138,8 +162,8 @@ void direct_map_1gb() {
 }
 
 void direct_map_kernel() {
-    char* current_vaddr = (char*)0xffffffff80000000;
-    char* current_paddr = (char*)0x0;
+    uint8_t* current_vaddr = (uint8_t*)HIGHER_HALF_KERNEL_OFFSET;
+    uint8_t* current_paddr = (uint8_t*)0x0;
 
     for (uint16_t i = 0; i < 512; i++)
     {
@@ -160,25 +184,15 @@ ERROR_CODE init_vmem() {
     
     pmm_load_root_ptable(_root_table);
 
+    _is_post_init = TRUE;
+
     return SUCCESS;
-}
-
-void* vmem_allocate_page() {
-
-}
-
-void vmem_free_page() {
-
 }
 
 void* vmem_lookup_paddress(void* virt) {
     // physical addresses are limited to 52
     uint64_t non_canonical_address = ((uint64_t)virt) << 12;    
-    pte_t* next_table = (pte_t*)get_address(_root_table + (non_canonical_address & 0x1FF));
-}
-
-void vmem_map_page(void* phys, void* virt) {
-
+    pte_t* next_table = (pte_t*)vphys_address(pte_get_address(_root_table + (non_canonical_address & 0x1FF)));
 }
 
 void* kpage_alloc(size_t page_count) {
@@ -476,4 +490,27 @@ void kfree(void* vaddr) {
     
     _kmalloc_fl_add(_kmalloc_figure_blocksize(vaddr, metadata_ptr), vaddr);
     ++metadata_ptr->free_count;
+}
+
+/*
+    USER SPACE
+*/
+
+// returns the length of allocated memory, expects 4kb aligned numbers
+size_t allocate_umm(uint64_t vaddr_start, size_t len) {
+    vaddr_start = (uint64_t)ALIGN_4KB(vaddr_start);
+    len = (size_t)ALIGN_4KB(len);
+
+    if (vaddr_start + len >= HIGHER_HALF_KERNEL_OFFSET) {
+        return 0;
+    }
+
+    for (size_t i = vaddr_start; i < vaddr_start + len; i += PAGE_SIZE)
+    {
+        void* phys = pmm_alloc();
+        if (!phys) return i - vaddr_start;
+        um_map((void*)i, phys);
+    }
+
+    return len;
 }

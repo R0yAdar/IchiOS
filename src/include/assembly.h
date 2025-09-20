@@ -25,6 +25,10 @@ void hlt();
 
 void set_rsp(void* stack_top);
 
+void* get_rsp();
+
+void switch_stack(void* new_stack, void (*func)(void));
+
 void load_gdtr(void* gdtr);
 
 uint8_t port_inb(uint8_t port);

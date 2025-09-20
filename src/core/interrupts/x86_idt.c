@@ -22,7 +22,7 @@ void general_exception_handler(uint64_t exception_no, void* ptr) {
 
     input.text = exception_messages[exception_no];
 
-    input.color = 0x37;
+    input.color = 0x1;
 
     vga_put(&input);
 }

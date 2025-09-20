@@ -6,10 +6,11 @@
 typedef enum block_status_t {
     BLOCK_STATUS_FREE = 0,
     BLOCK_STATUS_USED = 1,
-    BLOCK_STATUS_8CHUNK_USED = 0xff
+    BLOCK_STATUS_8CHUNK_USED = 0xffffffff
 } block_status;
 
 #define BITMAP_CELL_BIT_SIZE 32
+#define PAGE_SIZE 4096
 
 // global static variables
 // Maximum of 512MB
@@ -24,7 +25,7 @@ uint32_t free_bit(uint32_t value, uint32_t index) {
     return value & (~(1 << index));
 }
 
-uint32_t find_first_free_bit(uint32_t value) {
+int32_t find_first_free_bit(uint32_t value) {
      for (int i = 0; i < sizeof(value) * 8; ++i) {
         if (!((value >> i) & 1)) { 
             return i;
@@ -78,11 +79,14 @@ int pmm_init(pmm_context* context){
 }
 
 void* pmm_alloc() {
-    for(uint32_t i = 0; i < LENGTH(bitmap); ++i) {
+    for(uint64_t i = 0; i < LENGTH(bitmap); ++i) {
         if (bitmap[i] != BLOCK_STATUS_8CHUNK_USED) {
-            uint32_t free_bit_index = find_first_free_bit(bitmap[i]);
+            int32_t free_bit_index = find_first_free_bit(bitmap[i]);
+
+            if (find_first_free_bit == -1) { return NULL; }
+
             bitmap[i] = set_bit(bitmap[i], free_bit_index);
-            return i * 8 * 4096 + free_bit_index * 4096;
+            return (void*)((i * BITMAP_CELL_BIT_SIZE + free_bit_index) * PAGE_SIZE);
         }
     }
     

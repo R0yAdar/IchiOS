@@ -32,7 +32,7 @@ void assign_address(pte_t* pte, void* address) {
     *pte |= ((uint64_t)address & x64_PTE_MASK_PHYSICAL_ADDRESS);
 }
 
-void* get_address(pte_t* pte) {
+void* pte_get_address(pte_t* pte) {
     return (void*)(*pte & x64_PTE_MASK_PHYSICAL_ADDRESS);
 }
 
@@ -42,6 +42,10 @@ void mark_present(pte_t* pte) {
 
 void mark_writeable(pte_t* pte) {
     *pte |= x64_PTE_FLAG_WRITEABLE;
+}
+
+void mark_user_space(pte_t* pte) {
+    *pte |= x64_PTE_FLAG_USER_ACCESSIBLE;
 }
 
 #endif

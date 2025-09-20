@@ -61,6 +61,36 @@ typedef uint64_t gdt_desc;
 
 #pragma pack (push, 1)
 
+typedef struct {
+    uint32_t reserved0;
+    uint64_t rsp0;
+    uint64_t rsp1;
+    uint64_t rsp2;
+    uint64_t reserved1;
+    uint64_t ist1;
+    uint64_t ist2;
+    uint64_t ist3;
+    uint64_t ist4;
+    uint64_t ist5;
+    uint64_t ist6;
+    uint64_t ist7;
+    uint64_t reserved2;
+    uint16_t reserved3;
+    uint16_t iopb_offset;
+} tss;
+
+typedef struct {
+    uint16_t limit_low;       // Bits 0–15 of the TSS size
+    uint16_t base_low;        // Bits 0–15 of TSS base address
+    uint8_t  base_mid;        // Bits 16–23 of base
+    uint8_t  type;            // Type = 0x89 for 64-bit available TSS
+    uint8_t  limit_high : 4;  // Bits 16–19 of limit
+    uint8_t  flags      : 4;  // Flags (G, AVL) = 0
+    uint8_t  base_high;       // Bits 24–31 of base
+    uint32_t base_upper;      // Bits 32–63 of base
+    uint32_t reserved;        // Set to 0
+} gdt_tss_descriptor;
+
 typedef struct
 {
     uint16_t offset_low16;
@@ -80,6 +110,7 @@ typedef struct {
     gdt_desc data_pl0;
     gdt_desc code_pl3;
     gdt_desc data_pl3;
+    gdt_tss_descriptor tss;
 } gdt_table;
 
 typedef struct {
@@ -96,5 +127,14 @@ typedef struct {
 idt_descriptor idt_create_descriptor(void* handler);
  
 gdt_desc gdt_create_descriptor(uint32_t base, uint32_t limit, uint16_t flag);
+
+gdt_tss_descriptor gdt_create_tss_descriptor(uint64_t tss_address, uint16_t tss_size);
+
+/*
+SS0 gets the kernel datasegment descriptor (e.g. 0x10 if the third entry in your GDT describes your kernel's data)
+ESP0 gets the value the stack-pointer shall get at a system call
+IOPB may get the value sizeof(TSS) (which is 104) if you don't plan to use this io-bitmap further
+*/
+tss create_tss_segment(void* kernel_stack_top);
 
 #endif

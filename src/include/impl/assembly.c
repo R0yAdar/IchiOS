@@ -37,6 +37,25 @@ void set_rsp(void* stack_top) {
         : "memory");
 }
 
+void* get_rsp() {
+    void* rsp;
+    asm volatile (
+        "mov %%rsp, %0"
+        : "=r"(rsp)
+    );
+    return rsp;
+}
+
+void switch_stack(void* new_stack, void (*func)(void)) {
+    asm volatile (
+        "mov %0, %%rsp\n"
+        "jmp *%1\n"
+        :
+        : "r"(new_stack), "r"(func)
+        : "memory"
+    );
+}
+
 void load_gdtr(void* gdtr) {
         asm volatile (
         "lgdt (%0)"

@@ -1,7 +1,8 @@
-#pragma once
 #ifndef GDT_H
 #define GDT_H
 
-void init_gdt();
+#include "types.h"
+
+void init_gdt(void* tss, uint16_t tss_size);
 
 #endif

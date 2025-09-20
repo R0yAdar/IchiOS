@@ -37,3 +37,25 @@ gdt_desc gdt_create_descriptor(uint32_t base, uint32_t limit, uint16_t flag)
     
     return descriptor;
 }
+
+gdt_tss_descriptor gdt_create_tss_descriptor(uint64_t tss_address, uint16_t tss_size) {
+    gdt_tss_descriptor descriptor = {0};
+    descriptor.limit_low = tss_size;
+    
+    descriptor.base_low = (uint16_t)(tss_address & 0xFFFF); // 0-15bits
+    descriptor.base_mid = (uint8_t)((tss_address >> 16) & 0xFF); // 16-23bits
+    descriptor.base_high = (uint8_t)((tss_address >> 24) & 0xFF); // 24-31bits
+    descriptor.base_high = (uint32_t)(tss_address >> 32); // 32-63bits
+
+    descriptor.type = 0x89;
+
+    return descriptor;
+}
+
+tss create_tss_segment(void* kernel_stack_top) {
+    tss tss = {0};
+    tss.rsp0 = (uint64_t)kernel_stack_top;
+    tss.iopb_offset = sizeof(tss);
+
+    return tss;
+}
