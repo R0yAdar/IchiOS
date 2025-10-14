@@ -32,7 +32,7 @@ all: $(BOOT_IMAGE)
 
 # Launch in QEMU
 boot: $(BOOT_IMAGE)
-	qemu-system-x86_64 -no-reboot -drive file=$<,format=raw,index=0,media=disk
+	qemu-system-x86_64 -M q35 -no-reboot -no-shutdown -drive file=$<,format=raw,index=0,media=disk
 
 # Link object files into ELF
 $(BUILD_DIR)/linked.elf: $(OBJS)
@@ -45,7 +45,8 @@ $(BOOT_IMAGE): $(BUILD_DIR)/linked.elf
 	objcopy -O binary --only-section=.boot_sector --only-section=.boot_sign build/linked.elf build/boot_sector.bin
 	objcopy -O binary --only-section=.stage2 build/linked.elf build/stage2.bin
 	objcopy -O binary --only-section=.text --only-section=.data --only-section=.rodata build/linked.elf build/kernel.bin
-	cat build/boot_sector.bin build/stage2.bin build/kernel.bin > build/boot_image
+	cat build/boot_sector.bin build/stage2.bin build/kernel.bin > build/raw_boot_image
+	dd if=build/raw_boot_image of=build/boot_image bs=1M count=1 conv=sync
 
 # Compile assembly
 $(BUILD_DIR)/%.asm.o: $(SRC_DIR)/%.asm

@@ -3,9 +3,11 @@
 #include "pte.h"
 #include "print.h"
 #include "cstring.h"
+#include "assembly.h"
 
 #define ENTRIES_PER_TABLE 512
 #define RAM_DIRECT_MAPPING_OFFSET 0xffff800000000000
+#define RAM_MMIO_MAPPING_OFFSET 0xffff900000000000
 #define ALIGN_4KB(ptr) ((void*)((uint64_t)(ptr) & (~0xFFF)))
 
 typedef enum {
@@ -15,6 +17,7 @@ typedef enum {
     PTABLE_LVL_PTE = 1
 } PTABLE_LVL;
 
+void* _mmio_mapping_cur = (void*)RAM_MMIO_MAPPING_OFFSET;
 pte_t* _root_table;
 BOOL _is_post_init = FALSE;
 
@@ -50,31 +53,6 @@ void pte_put(pte_t* table, ptable_index_t index, pte_t value) {
     *((pte_t*)vphys_address(table  + index)) = value;
 }
 
-void print_table(pte_t* t, int level) {
-    if (level == 0) {
-        return;
-    }
-
-    int count = 0;
-
-    print("Table starting at: "); printxln((void*)t);
-
-    for (int i = 0; i < ENTRIES_PER_TABLE; i++)
-    {
-        if (*(t + i) != 0) {
-            print("Entry at: "); printx(i);
-            print(" pointing to -> "); printxln((uint64_t)pte_get_address((t + i)));
-            ++count;
-            
-            print_table((pte_t*)pte_get_address((t + i)), level - 1);
-        }
-
-        if (count > 3) {
-            return;
-        }
-    }
-}
-
 void* canonify(void* address) {
     return ((uint64_t) address & (1ull << 47)) ? 
         (void*)((0xffffull << 48) | (uint64_t)address) :
@@ -84,11 +62,12 @@ void* canonify(void* address) {
 pte_t* pt_allocate_into(pte_t* table_index_p) {
     pte_t entry = DEFAULT_PTE;
 
-    pte_t* ptable = (pte_t*)((vphys_address(pmm_alloc())));
+    void* phys = pmm_alloc(); // TODO: check null
+    pte_t* ptable = (pte_t*)((vphys_address(phys)));
 
     memset((void*)ptable, 0, PAGE_SIZE);
     
-    assign_address(&entry, ptable);
+    assign_address(&entry, phys);
 
     (*table_index_p) = entry;
 
@@ -108,11 +87,10 @@ pte_t* pt_get_or_allocate_into(pte_t* table_index_p) {
     return addr;
 }
 
-pte_t* init_mapping_entry(void* vaddr, void* paddr) {
-    // can also assert
+pte_t* init_mapping_entry(void* vaddr, void* paddr) {    
     vaddr = ALIGN_4KB(vaddr);
     paddr = ALIGN_4KB(paddr);
-    
+
     pte_t* pml4_entry = pte_get_index(_root_table, offset_to_index(vaddr, PTABLE_LVL_PML4));
     pte_t* pdpt = pt_get_or_allocate_into(pml4_entry);
 
@@ -134,6 +112,8 @@ ERROR_CODE simple_map(void* vaddr, void* paddr) {
 
     (*entry) = DEFAULT_PTE;
     assign_address(entry, paddr);
+
+    flush_tlb(vaddr);
     
     return SUCCESS;
 }
@@ -146,6 +126,11 @@ ERROR_CODE um_map(void* vaddr, void* paddr) {
     (*entry) = DEFAULT_PTE;
     mark_user_space(entry);
     assign_address(entry, paddr);
+    
+    print("Mapped: "); printx(vaddr); print(" --> "); printx(paddr); println("");
+
+    flush_tlb(vaddr);
+    pmm_load_root_ptable(_root_table);
 
     return SUCCESS;
 }
@@ -174,6 +159,25 @@ void direct_map_kernel() {
     }
 } 
 
+void* map_non_cacheable_page(void* phys) {
+    void* vaddr = _mmio_mapping_cur;
+
+    pte_t* entry = init_mapping_entry(vaddr, phys);
+
+    if (entry == NULL) return FAILED;
+
+    (*entry) = DEFAULT_PTE;
+    mark_user_space(entry);
+    mark_non_cacheable(entry);
+    assign_address(entry, phys);
+    flush_tlb(vaddr);
+    flush_tlb_all();
+
+    _mmio_mapping_cur = (void*)((uint8_t*)vaddr + PAGE_SIZE);
+
+    return vaddr;
+}
+
 // creates new tables and maps first 2MB of memory to higher half kernel space
 ERROR_CODE init_vmem() {
     _root_table = (pte_t*)pmm_alloc();
@@ -191,7 +195,7 @@ ERROR_CODE init_vmem() {
 
 void* vmem_lookup_paddress(void* virt) {
     // physical addresses are limited to 52
-    uint64_t non_canonical_address = ((uint64_t)virt) << 12;    
+    uint64_t non_canonical_address = ((uint64_t)virt) << 12;
     pte_t* next_table = (pte_t*)vphys_address(pte_get_address(_root_table + (non_canonical_address & 0x1FF)));
 }
 
@@ -214,8 +218,6 @@ void kpage_free(void* vaddr, size_t page_count) {
 
 /*
     KMALLOC
-
-
 */
 
 /* Structures */

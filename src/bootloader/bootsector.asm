@@ -136,3 +136,12 @@ read_sectors_msg3: db " requested sectors.", 13, 10,0
 startup_msg: db "Starting up - Ichi...", 13, 10, 0
 press_any_key_msg: db "Press any key to continue...", 13, 10, 0
 error_reading_disk_msg: db "Error: failed to read disk with 0x13/ah=0x42", 13, 10, 0
+
+times 446 - ($ - $$) db 0   ; pad up to partition table
+
+db 0x80              ; Boot flag: 0x80 = bootable
+db 0x00, 0x02, 0x00  ; dummy
+db 0x0B              ; fat32 type
+db 0xFF, 0xFF, 0xFF  ; dummy
+dd 2048              ; start lba
+dd 20480             ; size in sectors ~ 10MB

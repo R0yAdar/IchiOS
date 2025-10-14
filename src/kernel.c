@@ -13,6 +13,7 @@
 #include "assembly.h"
 #include "keyboard.h"
 #include "core/hal.h"
+#include "pci.h"
 
 #define ARRAY_SIZE(arr) ((int)sizeof(arr) / (int)sizeof((arr)[0]))
 #define KERNEL_STACK_SIZE 4
@@ -140,12 +141,20 @@ void _rest_of_start() {
 
 	void* p3 = kmalloc(8);
 
+	print("Allocating umm: ");
+
 	printxln(p3);
-	size_t amount = allocate_umm(0, 4096 * 100);
+	size_t amount = allocate_umm(0, 4096 * 1);
 
 	print("Allocated: "); printx(amount); println(" for user-space");	
+	void* usermem = (void*)0;
+	(*(uint64_t*)usermem) = 0xDEADBEEF;
 
 	sti();
+
+	println("Set hardware interrupts (sti)");
+
+	ahci_init();
 
 	while(1) { hlt(); } // if we return to bootloader - we'll double fault
 	println("Out of loop");

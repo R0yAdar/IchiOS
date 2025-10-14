@@ -37,6 +37,10 @@ void* pte_get_address(pte_t* pte) {
 }
 
 void mark_present(pte_t* pte) {
+    *pte |= x64_PTE_FLAG_DISABLE_CACHE;
+}
+
+void mark_non_cacheable(pte_t* pte) {
     *pte |= x64_PTE_FLAG_PRESENT;
 }
 

@@ -35,10 +35,16 @@ uint8_t port_inb(uint8_t port);
 
 void port_outb(uint8_t port, uint8_t data);
 
+port_outl(uint16_t port, uint32_t val);
+
+uint32_t port_inl(uint16_t port);
+
 void load_idtr(idtr idtr);
 
 void interrupt80(uint64_t arg1, void* arg2);
 
 void flush_tlb(uint64_t address);
+
+void flush_tlb_all();
 
 #endif

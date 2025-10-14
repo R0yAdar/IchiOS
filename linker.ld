@@ -35,5 +35,5 @@ SECTIONS
         *(.bss)
         *(COMMON)
 		__bss_end = .;
-    } > kernel
+    } > kernel	
 }

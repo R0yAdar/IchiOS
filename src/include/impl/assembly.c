@@ -75,6 +75,16 @@ void port_outb(uint8_t port, uint8_t data){
     asm volatile ("out %%al, %%dx" : : "a" (data), "d" (port));
 }
 
+port_outl(uint16_t port, uint32_t val) {
+    __asm__ volatile ("outl %0, %1" : : "a"(val), "Nd"(port));
+}
+
+uint32_t port_inl(uint16_t port) {
+    uint32_t ret;
+    __asm__ volatile ("inl %1, %0" : "=a"(ret) : "Nd"(port));
+    return ret;
+}
+
 void load_idtr(idtr idtr) {
     asm volatile (
         "lidt %0"
@@ -90,7 +100,12 @@ void interrupt80(uint64_t arg1, void* arg2)
 
 void flush_tlb(uint64_t address) 
 {
-    cli(); // TODO: check if this is needed
     asm volatile("invlpg (%0)" ::"r" (address) : "memory");
-    sti();
+}
+
+void flush_tlb_all() 
+{
+    void* cr3;
+    asm volatile("mov %%cr3, %0" : "=r"(cr3));
+    asm volatile("mov %0, %%cr3" :: "r"(cr3));
 }
