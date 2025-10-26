@@ -1,6 +1,7 @@
 #include "core/interrupts/idt.h"
 #include "core/interrupts/x86_pic.h"
 #include "core/interrupts/x86_pit.h"
+#include "ahci.h"
 #include "stdint.h"
 #include "vga.h"
 #include "multiboot.h"
@@ -14,6 +15,7 @@
 #include "keyboard.h"
 #include "core/hal.h"
 #include "pci.h"
+#include "serial.h"
 
 #define ARRAY_SIZE(arr) ((int)sizeof(arr) / (int)sizeof((arr)[0]))
 #define KERNEL_STACK_SIZE 4
@@ -86,14 +88,20 @@ void key_callback(uint8_t scancode, BOOL pressed) {
 	if (pressed) {
 		uint32_t key = kybrd_key_to_ascii(scancode);
 		
-		if (key < 128) {
+		if (key < 128) {			
+			if(key == '0') {
+				key = '1';
+			}
+
 			buffer[0] = key;
+
 			print(buffer);
 		}
 	}
 }
 
 void _start_kernel(multiboot_info* info) {
+	serial_init();
 	vga_clear_screen();
 	println("Ichi kernel loading...");
 	
@@ -126,7 +134,7 @@ void _start_kernel(multiboot_info* info) {
 }
 
 void _rest_of_start() {
-	println("Ichi kernel reallocated stack...");
+	qemu_log("Ichi kernel reallocated stack...");
 	_tss = create_tss_segment(_top_of_kernel_stack);
 	init_gdt(&_tss, sizeof(tss));
 	//syscall(0, 0);
@@ -152,10 +160,21 @@ void _rest_of_start() {
 
 	sti();
 
-	println("Set hardware interrupts (sti)");
+	qemu_log("Set hardware interrupts (sti)");
 
 	ahci_init();
 
+	void* phys_buf;
+	void* vaddr = kpage_alloc_dma(1, &phys_buf);
+
+	BOOL status = ahci_read(0x0, 8, phys_buf);
+
+	if (status) {
+		println("READ AHCI SUCCESSFULY");
+	}
+
+
+
 	while(1) { hlt(); } // if we return to bootloader - we'll double fault
-	println("Out of loop");
+	qemu_log("Out of loop ?_?");
 }

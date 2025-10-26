@@ -65,14 +65,18 @@ void load_gdtr(void* gdtr) {
     );
 }
 
-uint8_t port_inb(uint8_t port){
+uint8_t port_inb(uint16_t port) {
     uint8_t result;
-    asm volatile ("in %%dx, %%al" : "=a" (result) : "d" (port));
+    asm volatile ("inb %1, %0"
+                  : "=a"(result)
+                  : "Nd"(port));
     return result;
 }
 
-void port_outb(uint8_t port, uint8_t data){
-    asm volatile ("out %%al, %%dx" : : "a" (data), "d" (port));
+void port_outb(uint16_t port, uint8_t data) {
+    asm volatile ("outb %0, %1"
+                  :
+                  : "a"(data), "Nd"(port));
 }
 
 port_outl(uint16_t port, uint32_t val) {

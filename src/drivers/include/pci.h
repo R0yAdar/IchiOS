@@ -49,4 +49,14 @@ pci_device pci_get_device(uint16_t vendor, uint16_t device);
 
 pci_device pci_get_by_class(uint8_t class_code, uint8_t subclass, uint8_t prog_if);
 
+#define PCI_COMMAND_MEMORY (1 << 1)
+#define PCI_COMMAND_MASTER (1 << 2)
+#define PCI_COMMAND_INT_DISABLE (1 << 10)
+
+void pci_enable_mmio(pci_device* desc);
+
+void pci_enable_mastering(pci_device* desc);
+
+void pci_enable_interrupts(pci_device* desc);
+
 #endif

@@ -1,1 +1,0 @@
-BOOL ahci_init();

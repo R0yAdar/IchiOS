@@ -159,23 +159,28 @@ void direct_map_kernel() {
     }
 } 
 
-void* map_non_cacheable_page(void* phys) {
-    void* vaddr = _mmio_mapping_cur;
+void* map_mmio_region(void* phys_start, void* phys_end) {
+    uint64_t offset = (uint64_t)phys_start - (uint64_t)ALIGN_4KB(phys_start);
+    uint64_t start_address = (uint64_t)_mmio_mapping_cur;
 
-    pte_t* entry = init_mapping_entry(vaddr, phys);
+    while (phys_start < (uint64_t)phys_end)
+    {
+        void* vaddr = _mmio_mapping_cur;
+        pte_t* entry = init_mapping_entry(vaddr, phys_start);
 
-    if (entry == NULL) return FAILED;
+        if (entry == NULL) return NULL;
 
-    (*entry) = DEFAULT_PTE;
-    mark_user_space(entry);
-    mark_non_cacheable(entry);
-    assign_address(entry, phys);
-    flush_tlb(vaddr);
-    flush_tlb_all();
+        (*entry) = DEFAULT_PTE;
+        mark_user_space(entry);
+        mark_non_cacheable(entry);
+        assign_address(entry, phys_start);
+        flush_tlb(vaddr);
+        
+        phys_start = (void*)((uint64_t)phys_start + PAGE_SIZE);
+        _mmio_mapping_cur = (void*)((uint64_t)_mmio_mapping_cur + PAGE_SIZE);
+    }
 
-    _mmio_mapping_cur = (void*)((uint8_t*)vaddr + PAGE_SIZE);
-
-    return vaddr;
+    return (void*)(start_address + offset);
 }
 
 // creates new tables and maps first 2MB of memory to higher half kernel space
@@ -202,7 +207,7 @@ void* vmem_lookup_paddress(void* virt) {
 void* kpage_alloc(size_t page_count) {
     void* paddr = pmm_alloc_blocks(page_count);
 
-    if (!paddr) return NULL;
+    if (paddr == NULL) return NULL;
     
     void* vaddr = (void*)(RAM_DIRECT_MAPPING_OFFSET | (uint64_t)paddr);
     memset((void*)vaddr, 0, PAGE_SIZE * page_count);
@@ -210,8 +215,22 @@ void* kpage_alloc(size_t page_count) {
     return vaddr;
 }
 
+void* kpage_alloc_dma(size_t page_count, void** out_phys_address) {
+    void* paddr = pmm_alloc_blocks(page_count);
+
+    if (paddr == NULL) return NULL;
+    void* vaddr = map_mmio_region(paddr, (void*)((uint64_t)paddr + PAGE_SIZE * page_count));
+    memset((void*)vaddr, 0, PAGE_SIZE * page_count);
+
+    (*out_phys_address) = paddr;
+
+    return vaddr;
+}
+
+
 void kpage_free(void* vaddr, size_t page_count) {
-    if (!vaddr) return;
+    if (vaddr == NULL) return;
+    if ((uint64_t)vaddr & RAM_DIRECT_MAPPING_OFFSET != RAM_DIRECT_MAPPING_OFFSET) return;
 
     pmm_free_blocks((void*)((~RAM_DIRECT_MAPPING_OFFSET) & (uint64_t)vaddr), page_count);
 }

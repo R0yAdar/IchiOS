@@ -32,7 +32,7 @@ all: $(BOOT_IMAGE)
 
 # Launch in QEMU
 boot: $(BOOT_IMAGE)
-	qemu-system-x86_64 -M q35 -no-reboot -no-shutdown -drive file=$<,format=raw,index=0,media=disk
+	qemu-system-x86_64 -M q35 -no-reboot -no-shutdown -drive file=$<,format=raw,index=0,media=disk -serial stdio
 
 # Link object files into ELF
 $(BUILD_DIR)/linked.elf: $(OBJS)

@@ -2,6 +2,8 @@
 #include "assembly.h"
 #include "print.h"
 
+#define PCI_COMMAND_OFFSET 0x04
+
 uint32_t pci_create_address(uint8_t bus, uint8_t device, uint8_t function, uint8_t reg_offset) {
     return (((uint32_t) 1) << 31)
         | ((uint32_t) bus << 16) // bus on pci
@@ -97,4 +99,22 @@ pci_device pci_get_by_class(uint8_t class_code, uint8_t subclass, uint8_t prog_i
     }
 
     return (pci_device){ .vendor_id = 0xFFFF };
+}
+
+void pci_enable_mmio(pci_device* desc) {
+    uint32_t cmd = pci_read(desc->bus, desc->device, desc->function, PCI_COMMAND_OFFSET);
+    cmd |= PCI_COMMAND_MEMORY;
+    pci_write(desc->bus, desc->device, desc->function, PCI_COMMAND_OFFSET, cmd);
+}
+
+void pci_enable_mastering(pci_device* desc) {
+    uint32_t cmd = pci_read(desc->bus, desc->device, desc->function, PCI_COMMAND_OFFSET);
+    cmd |= PCI_COMMAND_MASTER;
+    pci_write(desc->bus, desc->device, desc->function, PCI_COMMAND_OFFSET, cmd);
+}
+
+void pci_enable_interrupts(pci_device* desc) {
+    uint32_t cmd = pci_read(desc->bus, desc->device, desc->function, PCI_COMMAND_OFFSET);
+    cmd &= ~PCI_COMMAND_INT_DISABLE;
+    pci_write(desc->bus, desc->device, desc->function, PCI_COMMAND_OFFSET, cmd);
 }
