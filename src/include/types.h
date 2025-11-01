@@ -5,3 +5,5 @@
 
 #define FALSE (BOOL)0
 #define TRUE (BOOL)1
+
+#define DWORD_SIZE 4

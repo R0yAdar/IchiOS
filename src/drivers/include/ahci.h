@@ -19,7 +19,7 @@
 #define HBA_PORT_DET_PRESENT 3
 
 #define AHCI_COMMAND_SLOTS_AMOUNT 32
-#define ATA_CMD_READ_DMA_EX 0xC8
+#define ATA_CMD_READ_DMA_EX 0x25
 
 #define HBA_PxCMD_ST    0x0001
 #define HBA_PxCMD_FRE   0x0010
@@ -211,6 +211,43 @@ typedef struct
 
 typedef struct
 {
+	// DWORD 0
+	uint8_t  fis_type;	// FIS_TYPE_PIO_SETUP
+
+	uint8_t  pmport:4;	// Port multiplier
+	uint8_t  rsv0:1;		// Reserved
+	uint8_t  d:1;		// Data transfer direction, 1 - device to host
+	uint8_t  i:1;		// Interrupt bit
+	uint8_t  rsv1:1;
+
+	uint8_t  status;		// Status register
+	uint8_t  error;		// Error register
+
+	// DWORD 1
+	uint8_t  lba0;		// LBA low register, 7:0
+	uint8_t  lba1;		// LBA mid register, 15:8
+	uint8_t  lba2;		// LBA high register, 23:16
+	uint8_t  device;		// Device register
+
+	// DWORD 2
+	uint8_t  lba3;		// LBA register, 31:24
+	uint8_t  lba4;		// LBA register, 39:32
+	uint8_t  lba5;		// LBA register, 47:40
+	uint8_t  rsv2;		// Reserved
+
+	// DWORD 3
+	uint8_t  countl;		// Count register, 7:0
+	uint8_t  counth;		// Count register, 15:8
+	uint8_t  rsv3;		// Reserved
+	uint8_t  e_status;	// New value of status register
+
+	// DWORD 4
+	uint16_t tc;		// Transfer count
+	uint8_t  rsv4[2];	// Reserved
+} fis_pio_t;
+
+typedef struct
+{
 	// DW0
 	uint8_t  cfl:5;		// Command FIS length in DWORDS, 2 ~ 16
 	uint8_t  a:1;		// ATAPI
@@ -264,12 +301,40 @@ typedef struct
 	hba_prdt_entry_t	prdt_entry[1];	// Physical region descriptor table entries, 0 ~ 65535
 } hba_cmd_tbl_t;
 
+typedef struct {
+    uint8_t fis_type;   // 0xA1
+    uint8_t pmport:4;   // Port multiplier
+    uint8_t rsv0:2;     // Reserved
+    uint8_t i:1;        // Interrupt bit
+    uint8_t rsv1:1;     // Reserved
+
+    uint8_t status;     // ATA status register
+    uint8_t error;      // ATA error register
+
+    uint32_t sactive;   // NCQ active bits (one bit per command slot)
+} fis_dev_bits_t;
+
+
+typedef volatile struct
+{
+	fis_dma_t		dsfis;
+	uint8_t     	pad0[4];
+	fis_pio_t		psfis;
+	uint8_t     	pad1[12];
+	fis_reg_d2h_t	rfis;
+	uint8_t     	pad2[4];
+	fis_dev_bits_t	sdbfis;
+	uint8_t         ufis[64];
+	uint8_t   	rsv[0x100-0xA0];
+} rfis_t;
+
+
 #pragma pack(pop)
 
 typedef struct {
-	hba_port_t port;
+	hba_port_t* port;
 	hba_cmd_header_t* clb; // Command List Buffer
-	fis_reg_h2d_t* fb; // FIS Buffer
+	rfis_t* fb; // FIS Buffer
 	hba_cmd_tbl_t* ctba_start; // 32 enteries of 256 bytes each (8 * 32 enteries)
 } sata_device;
 

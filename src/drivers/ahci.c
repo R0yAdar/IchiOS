@@ -44,12 +44,13 @@ void stop_cmd(hba_port_t *port)
 #define CMD_LIST_BUFFER_SIZE 0x1000
 #define CMD_TABLE_ENTRY_SIZE 32
 #define CMD_TABLE_ENTRY_COUNT 8
+#define COMMAND_TABLE_SIZE (CMD_TABLE_ENTRY_SIZE * (CMD_TABLE_ENTRY_COUNT - 1) + sizeof(hba_cmd_tbl_t) + 16) // (allignment)
 
 
 void port_rebase(hba_port_t *port)
 {
 	void* paddr;
-	void* vaddr = kpage_alloc_dma(3, &paddr);
+	void* vaddr = kpage_alloc_dma(4, &paddr);
 	
 	void* pclb = paddr;
 	void* vclb = vaddr;
@@ -72,7 +73,7 @@ void port_rebase(hba_port_t *port)
 	
 	for (int i=0; i < AHCI_COMMAND_SLOTS_AMOUNT; i++)
 	{
-		uint64_t address = (uint64_t)pctba_top + (CMD_TABLE_ENTRY_COUNT * CMD_TABLE_ENTRY_SIZE) * i;
+		uint64_t address = (uint64_t)pctba_top + (COMMAND_TABLE_SIZE) * i;
 		cmdheader[i].prdtl = CMD_TABLE_ENTRY_COUNT;
 		cmdheader[i].ctba = (uint32_t)address;
 		cmdheader[i].ctbau = (uint32_t)(address >> 32);
@@ -81,7 +82,7 @@ void port_rebase(hba_port_t *port)
 	_sata0.clb = vclb;
 	_sata0.fb = vfb;
 	_sata0.ctba_start = vctba_top;
-	_sata0.port = *port;
+	_sata0.port = port;
 
 	start_cmd(port);
 }
@@ -171,7 +172,7 @@ BOOL ahci_read(void* lba_ptr, uint32_t sector_count, void* phys_buffer)
 {
     if (sector_count == 0) return FALSE;
 
-    volatile hba_port_t *port = &_sata0.port;
+    volatile hba_port_t *port = _sata0.port;
 
     // 1) find a free slot
     int slot = find_cmdslot(port);
@@ -180,36 +181,50 @@ BOOL ahci_read(void* lba_ptr, uint32_t sector_count, void* phys_buffer)
         return FALSE;
     }
 
-    // 2) pointers to header and command table (virtual)
-    volatile hba_cmd_header_t *cmdheader = (hba_cmd_header_t*)_sata0.clb;
-    volatile hba_cmd_tbl_t *cmdtbl = (hba_cmd_tbl_t*)((uint64_t)_sata0.ctba_start + (slot * (CMD_TABLE_ENTRY_SIZE * CMD_TABLE_ENTRY_COUNT)));
+    volatile hba_cmd_header_t *cmdheader = (hba_cmd_header_t*)(_sata0.clb);
 
-    // Clear command table memory (64+16+48+PRDT area)
-    // 256 bytes total per table
-    for (int i = 0; i < 256/4; ++i) {
-        ((uint32_t*)cmdtbl)[i] = 0;
+	cmdheader[slot].cfl = (uint8_t)(sizeof(fis_reg_h2d_t) / DWORD_SIZE);
+    cmdheader[slot].w = 0;
+
+	uint64_t result = slot * COMMAND_TABLE_SIZE;
+	volatile hba_cmd_tbl_t *cmdtbl = (hba_cmd_tbl_t*)((uint64_t)_sata0.ctba_start + (slot * COMMAND_TABLE_SIZE));
+
+	memset(cmdtbl, 0, COMMAND_TABLE_SIZE);
+
+	uint64_t buffer_pa = (uint64_t)phys_buffer;
+
+	uint64_t sectors_per_prdt_entry = sector_count / (CMD_TABLE_ENTRY_COUNT - 1);
+	uint64_t remaining_sectors = sector_count % (CMD_TABLE_ENTRY_COUNT - 1);
+
+	int prdt_index = 0;
+
+	for (; prdt_index < CMD_TABLE_ENTRY_COUNT - 1 && sectors_per_prdt_entry > 0; prdt_index++)
+	{
+		cmdtbl->prdt_entry[prdt_index].dba = (uint32_t)(buffer_pa & 0xFFFFFFFF);
+        cmdtbl->prdt_entry[prdt_index].dbau = (uint32_t)(buffer_pa >> 32);
+		cmdtbl->prdt_entry[prdt_index].dbc = sectors_per_prdt_entry * SECTOR_SIZE - 1;
+		cmdtbl->prdt_entry[prdt_index].i = 1;
+		buffer_pa += sectors_per_prdt_entry * SECTOR_SIZE;
     }
+	if (remaining_sectors > 0) {
+		cmdtbl->prdt_entry[prdt_index].dba = (uint32_t)(buffer_pa & 0xFFFFFFFF);
+		cmdtbl->prdt_entry[prdt_index].dbau = (uint32_t)(buffer_pa >> 32);
+		cmdtbl->prdt_entry[prdt_index].dbc = remaining_sectors * SECTOR_SIZE - 1;
+		cmdtbl->prdt_entry[prdt_index].i = 1;
+		++prdt_index;
+	}
 
-    // 3) fill command header
-    // cfl = command FIS length in DWORDS (5 dwords = 20 bytes)
-    cmdheader[slot].cfl = (uint8_t)(sizeof(fis_reg_h2d_t) / 4); // 20/4 = 5
-    cmdheader[slot].w   = 0;    // 0 = device to host (read)
-    cmdheader[slot].prdtl = 0;  // we'll set actual PRDT entries count below
-    cmdheader[slot].prdbc = 0;  // cleared
+	cmdheader->prdtl = prdt_index;
 
-    // ensure PRDTL will fit; we'll update it after building PRDT
-    // ctba/ctbau were set during port_rebase; no need to set here
 
-    // 4) prepare CFIS (host -> device command)
-    volatile fis_reg_h2d_t *cfis = (fis_reg_h2d_t*)(_sata0.fb);
-    // Zeroing already done by clearing cmdtbl above; set fields:
+    volatile fis_reg_h2d_t *cfis = (fis_reg_h2d_t*)(&cmdtbl->cfis);
+
     cfis->fis_type = FIS_TYPE_REG_H2D;
-    cfis->c = 1; // Command
-    cfis->pmport = 0;
-    cfis->command = ATA_CMD_READ_DMA_EX; // 0xC8
+    cfis->c = 1;
 
-    // LBA: allow 48-bit LBA
-    uint64_t lba = (uint64_t) (uint64_t)lba_ptr;
+    cfis->command = ATA_CMD_READ_DMA_EX;
+
+    uint64_t lba = (uint64_t)lba_ptr;
     cfis->lba0 = (uint8_t)(lba & 0xFF);
     cfis->lba1 = (uint8_t)((lba >> 8) & 0xFF);
     cfis->lba2 = (uint8_t)((lba >> 16) & 0xFF);
@@ -218,48 +233,8 @@ BOOL ahci_read(void* lba_ptr, uint32_t sector_count, void* phys_buffer)
     cfis->lba4 = (uint8_t)((lba >> 32) & 0xFF);
     cfis->lba5 = (uint8_t)((lba >> 40) & 0xFF);
 
-    // Sector count (16-bit)
     cfis->countl = (uint8_t)(sector_count & 0xFF);
     cfis->counth = (uint8_t)((sector_count >> 8) & 0xFF);
-
-    // 5) build PRDT entries to point the controller to phys_buffer
-    uint64_t bytes_remaining = (uint64_t)sector_count * SECTOR_SIZE;
-    uint64_t buffer_pa = (uint64_t)phys_buffer;
-
-    int prdt_index = 0;
-    while (bytes_remaining > 0 && prdt_index < CMD_TABLE_ENTRY_COUNT) {
-        uint64_t bytes_this = bytes_remaining;
-        if (bytes_this > MAX_PRDT_BYTE_COUNT) bytes_this = MAX_PRDT_BYTE_COUNT;
-
-        // Fill PRDT entry
-        cmdtbl->prdt_entry[prdt_index].dba = (uint32_t)(buffer_pa & 0xFFFFFFFF);
-        cmdtbl->prdt_entry[prdt_index].dbau = (uint32_t)(buffer_pa >> 32);
-        cmdtbl->prdt_entry[prdt_index].rsv0 = 0;
-
-        // dbc is byte count - 1 in bits 0..21 of that DW (we have 22 bits)
-        uint32_t dbc_field = (uint32_t)(bytes_this - 1) & 0x3FFFFF;
-        // set interrupt on completion for last PRDT entry (i=1)
-        cmdtbl->prdt_entry[prdt_index].dbc = dbc_field;
-        cmdtbl->prdt_entry[prdt_index].i = 0; // clear for now
-
-        buffer_pa += bytes_this;
-        bytes_remaining -= bytes_this;
-        prdt_index++;
-    }
-
-    if (bytes_remaining != 0) {
-        // Not enough PRDT entries available
-        println("AHCI: transfer too large for PRDT entries");
-        return FALSE;
-    }
-
-    // Mark interrupt-on-completion on last PRDT
-    if (prdt_index > 0) {
-        cmdtbl->prdt_entry[prdt_index - 1].i = 1;
-    }
-
-    // Update header with PRDT count
-    cmdheader[slot].prdtl = prdt_index;
 
     // 6) Clear port interrupt status
     port->is = (uint32_t)-1;
@@ -267,12 +242,10 @@ BOOL ahci_read(void* lba_ptr, uint32_t sector_count, void* phys_buffer)
     // 7) Issue command by setting CI bit for the slot
     port->ci = (1u << slot);
 
-    // 8) Wait for completion
-    // Wait until slot cleared in CI
     while (1) {
         // Check for taskfile error from port interrupt status
         if (port->is & HBA_PxIS_TFES) {
-            println("AHCI: taskfile error (TFES)");
+            println("AHCI: taskfile error (TFES)!");
             // Clear error status
             port->is = HBA_PxIS_TFES;
             return FALSE;
@@ -282,18 +255,12 @@ BOOL ahci_read(void* lba_ptr, uint32_t sector_count, void* phys_buffer)
             break;
     }
 
-    // 9) Check TFD (task file) for errors or busy
-    // Ensure device is not busy and has cleared DRQ
-    while ( (port->tfd & (ATA_DEV_BUSY | ATA_DEV_DRQ)) ) {
-        // optional: add timeout here to avoid infinite loop
-        if (port->is & HBA_PxIS_TFES) {
-            println("AHCI: device error after completion");
-            port->is = HBA_PxIS_TFES;
-            return FALSE;
-        }
-    }
-
-    // 10) Success — buffer now contains read data
+    if (port->is & HBA_PxIS_TFES)
+	{
+		println("AHCI: taskfile error (TFES)");
+		return FALSE;
+	}
+	
     return TRUE;
 }
 

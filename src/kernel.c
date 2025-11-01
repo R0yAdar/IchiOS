@@ -167,13 +167,16 @@ void _rest_of_start() {
 	void* phys_buf;
 	void* vaddr = kpage_alloc_dma(1, &phys_buf);
 
-	BOOL status = ahci_read(0x0, 8, phys_buf);
+	print("Allocated buffer: "); printxln(phys_buf);
+
+	BOOL status = ahci_read(0x0, 1, phys_buf);
+	printx(((uint8_t*)vaddr)[510]);
+	printx(((uint8_t*)vaddr)[511]);
+	
 
 	if (status) {
 		println("READ AHCI SUCCESSFULY");
 	}
-
-
 
 	while(1) { hlt(); } // if we return to bootloader - we'll double fault
 	qemu_log("Out of loop ?_?");
