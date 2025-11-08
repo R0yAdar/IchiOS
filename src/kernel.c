@@ -9,13 +9,14 @@
 #include "print.h"
 #include "pmm.h"
 #include "err.h"
-#include "core/mem/vmm.h"
+#include "vmm.h"
 #include "core/gdt/gdt.h"
 #include "assembly.h"
 #include "keyboard.h"
 #include "core/hal.h"
 #include "pci.h"
 #include "serial.h"
+#include "ext2.h"
 
 #define ARRAY_SIZE(arr) ((int)sizeof(arr) / (int)sizeof((arr)[0]))
 #define KERNEL_STACK_SIZE 4
@@ -164,19 +165,15 @@ void _rest_of_start() {
 
 	ahci_init();
 
-	void* phys_buf;
-	void* vaddr = kpage_alloc_dma(1, &phys_buf);
+	io_device device = {0};
+	device.read = ahci_read;
+	device.write = ahci_write;
+	device.start_lba = 2048; // skip first 2048 sectors (1MB)
+	device.end_lba = 2048 + 2048 * 10; // (10MB file system)
 
-	print("Allocated buffer: "); printxln(phys_buf);
-
-	BOOL status = ahci_read(0x0, 1, phys_buf);
-	printx(((uint8_t*)vaddr)[510]);
-	printx(((uint8_t*)vaddr)[511]);
+	ext2_context context = ext2_init(&device);
 	
-
-	if (status) {
-		println("READ AHCI SUCCESSFULY");
-	}
+	ext2_root(&context);
 
 	while(1) { hlt(); } // if we return to bootloader - we'll double fault
 	qemu_log("Out of loop ?_?");

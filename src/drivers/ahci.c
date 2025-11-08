@@ -1,6 +1,6 @@
 #include "pci.h"
 #include "ahci.h"
-#include "../../core/mem/vmm.h"
+#include "vmm.h"
 #include "print.h"
 #include "types.h"
 
@@ -168,13 +168,12 @@ int check_type(hba_port_t *port)
 #define SECTOR_SIZE 512
 #define MAX_PRDT_BYTE_COUNT (4 * 1024 * 1024) // 4MB per PRDT entry
 
-BOOL ahci_read(void* lba_ptr, uint32_t sector_count, void* phys_buffer)
+BOOL ahci_action(uint64_t lba, uint32_t sector_count, void* phys_buffer, uint8_t command)
 {
     if (sector_count == 0) return FALSE;
 
     volatile hba_port_t *port = _sata0.port;
 
-    // 1) find a free slot
     int slot = find_cmdslot(port);
     if (slot == -1) {
         println("AHCI: no free command slot");
@@ -184,7 +183,14 @@ BOOL ahci_read(void* lba_ptr, uint32_t sector_count, void* phys_buffer)
     volatile hba_cmd_header_t *cmdheader = (hba_cmd_header_t*)(_sata0.clb);
 
 	cmdheader[slot].cfl = (uint8_t)(sizeof(fis_reg_h2d_t) / DWORD_SIZE);
-    cmdheader[slot].w = 0;
+    
+	if (command == ATA_CMD_WRITE_DMA_EX) {
+		cmdheader[slot].w = 1;
+	} 
+	else
+	{
+		cmdheader[slot].w = 0;
+	}
 
 	uint64_t result = slot * COMMAND_TABLE_SIZE;
 	volatile hba_cmd_tbl_t *cmdtbl = (hba_cmd_tbl_t*)((uint64_t)_sata0.ctba_start + (slot * COMMAND_TABLE_SIZE));
@@ -216,19 +222,17 @@ BOOL ahci_read(void* lba_ptr, uint32_t sector_count, void* phys_buffer)
 
 	cmdheader->prdtl = prdt_index;
 
-
     volatile fis_reg_h2d_t *cfis = (fis_reg_h2d_t*)(&cmdtbl->cfis);
 
     cfis->fis_type = FIS_TYPE_REG_H2D;
     cfis->c = 1;
 
-    cfis->command = ATA_CMD_READ_DMA_EX;
+    cfis->command = command;
 
-    uint64_t lba = (uint64_t)lba_ptr;
     cfis->lba0 = (uint8_t)(lba & 0xFF);
     cfis->lba1 = (uint8_t)((lba >> 8) & 0xFF);
     cfis->lba2 = (uint8_t)((lba >> 16) & 0xFF);
-    cfis->device = 1 << 6; // set LBA bit (bit6)
+    cfis->device = 1 << 6; // lba bit
     cfis->lba3 = (uint8_t)((lba >> 24) & 0xFF);
     cfis->lba4 = (uint8_t)((lba >> 32) & 0xFF);
     cfis->lba5 = (uint8_t)((lba >> 40) & 0xFF);
@@ -236,17 +240,13 @@ BOOL ahci_read(void* lba_ptr, uint32_t sector_count, void* phys_buffer)
     cfis->countl = (uint8_t)(sector_count & 0xFF);
     cfis->counth = (uint8_t)((sector_count >> 8) & 0xFF);
 
-    // 6) Clear port interrupt status
     port->is = (uint32_t)-1;
 
-    // 7) Issue command by setting CI bit for the slot
     port->ci = (1u << slot);
 
     while (1) {
-        // Check for taskfile error from port interrupt status
         if (port->is & HBA_PxIS_TFES) {
             println("AHCI: taskfile error (TFES)!");
-            // Clear error status
             port->is = HBA_PxIS_TFES;
             return FALSE;
         }
@@ -264,11 +264,8 @@ BOOL ahci_read(void* lba_ptr, uint32_t sector_count, void* phys_buffer)
     return TRUE;
 }
 
-
-// Find a free command list slot
 int find_cmdslot(hba_port_t *port)
 {
-	// If not set in SACT and CI, the slot is free
 	uint32_t slots = (port->sact | port->ci);
 	for (int i=0; i< 32; i++)
 	{
@@ -277,6 +274,16 @@ int find_cmdslot(hba_port_t *port)
 		slots >>= 1;
 	}
 	return -1;
+}
+
+BOOL ahci_read(uint64_t lba, uint32_t sector_count, void* phys_buffer)
+{
+    return ahci_action(lba, sector_count, phys_buffer, ATA_CMD_READ_DMA_EX);
+}
+
+BOOL ahci_write(uint64_t lba, uint32_t sector_count, void* phys_buffer)
+{
+    return ahci_action(lba, sector_count, phys_buffer, ATA_CMD_WRITE_DMA_EX);
 }
 
 BOOL ahci_init() {

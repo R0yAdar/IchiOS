@@ -20,6 +20,7 @@
 
 #define AHCI_COMMAND_SLOTS_AMOUNT 32
 #define ATA_CMD_READ_DMA_EX 0x25
+#define ATA_CMD_WRITE_DMA_EX 0x35
 
 #define HBA_PxCMD_ST    0x0001
 #define HBA_PxCMD_FRE   0x0010
@@ -340,4 +341,6 @@ typedef struct {
 
 BOOL ahci_init();
 
-BOOL ahci_read(void* lba_ptr, uint32_t sector_count, void* phys_buffer);
+BOOL ahci_read(uint64_t lba, uint32_t sector_count, void* phys_buffer);
+
+BOOL ahci_write(uint64_t lba, uint32_t sector_count, void* phys_buffer);

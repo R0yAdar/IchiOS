@@ -45,8 +45,16 @@ $(BOOT_IMAGE): $(BUILD_DIR)/linked.elf
 	objcopy -O binary --only-section=.boot_sector --only-section=.boot_sign build/linked.elf build/boot_sector.bin
 	objcopy -O binary --only-section=.stage2 build/linked.elf build/stage2.bin
 	objcopy -O binary --only-section=.text --only-section=.data --only-section=.rodata build/linked.elf build/kernel.bin
+	
 	cat build/boot_sector.bin build/stage2.bin build/kernel.bin > build/raw_boot_image
 	dd if=build/raw_boot_image of=build/boot_image bs=1M count=1 conv=sync
+
+	mkdir -p build/rootfs
+	echo "hello world" > build/rootfs/readme.txt
+
+	genext2fs -b 10240 -d build/rootfs build/fs.ext2
+
+	cat build/fs.ext2 >> build/boot_image
 
 # Compile assembly
 $(BUILD_DIR)/%.asm.o: $(SRC_DIR)/%.asm
