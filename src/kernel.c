@@ -173,7 +173,9 @@ void _rest_of_start() {
 
 	ext2_context context = ext2_init(&device);
 	
+
 	ext2_root(&context);
+
 
 	while(1) { hlt(); } // if we return to bootloader - we'll double fault
 	qemu_log("Out of loop ?_?");

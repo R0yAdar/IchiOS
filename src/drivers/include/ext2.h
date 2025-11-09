@@ -187,18 +187,7 @@ typedef struct {
     uint32_t used_sectors_count;
     uint32_t flags;
     uint32_t os_specific1;
-    uint32_t direct_bp0; // block pointers...
-    uint32_t direct_bp1;
-    uint32_t direct_bp2;
-    uint32_t direct_bp3;
-    uint32_t direct_bp4;
-    uint32_t direct_bp5;
-    uint32_t direct_bp6;
-    uint32_t direct_bp7;
-    uint32_t direct_bp8;
-    uint32_t direct_bp9;
-    uint32_t direct_bp10;
-    uint32_t direct_bp11;
+    uint32_t direct_bp[12]; // block pointers...
     uint32_t singly_indirect_bp;
     uint32_t doubly_indirect_bp;
     uint32_t triply_indirect_bp;
@@ -225,6 +214,8 @@ typedef struct {
     superblock _sb;
     extended_superblock _esb;
     BOOL _is_valid;
+    uint32_t block_size;
+    uint32_t sectors_per_block;
 } ext2_context;
 
 
@@ -258,32 +249,31 @@ uint32_t ext2_locate_inode_group(ext2_context* ctx, uint32_t inode) {
 uint32_t ext2_locate_inode_index(ext2_context* ctx, uint32_t inode) {
     return (inode - 1) % ctx->_sb.inodes_per_group;
 }
-
+/*
 uint32_t ext2_locate_inode_block(ext2_context* ctx, uint32_t index) {
-    // if _esb is not valid - INODE_SIZE is 128
-    return (index * ctx->_esb.inode_size) / (1024 << ctx->_sb.log_block_size);
+    return (index * ctx->_esb.inode_size) / ctx->block_size;
 }
+*/
 
-ext2_bgd* ext2_read_bgdt(ext2_context* ctx, uint32_t index) {
+BOOL ext2_read_bgdt(ext2_context* ctx, uint32_t index, ext2_bgd* out) {
     // entry size is 32 bytes so -> 16 entries per sector
 
-    uint32_t block_size = 1024 << ctx->_sb.log_block_size;
     uint32_t bgd_addr = 0;
 
-    if (block_size == 1024) {
+    if (ctx->block_size == 1024) {
         // the first block is the bootsector
         bgd_addr += (1024 + 1024);
     }
     else {
         // the first block is the bootsector + superblock
-        bgd_addr += block_size;
+        bgd_addr += ctx->block_size;
     }
 
     uint32_t bgd_count = (
         (ctx->_sb.blocks_count + ctx->_sb.blocks_per_group - 1) / ctx->_sb.blocks_per_group
     );
 
-    if (index >= bgd_count) return NULL;
+    if (index >= bgd_count) return FALSE;
 
     bgd_addr += index * sizeof(ext2_bgd);
 
@@ -296,9 +286,11 @@ ext2_bgd* ext2_read_bgdt(ext2_context* ctx, uint32_t index) {
         lba,
         1);
 
-    if (!bgdt) return NULL;
+    if (!bgdt) return FALSE;
 
-    return bgdt + bgd_offset;
+    (*out) = *(bgdt + bgd_offset);
+
+    return TRUE;
 }
 
 
@@ -314,6 +306,8 @@ ext2_context ext2_init(io_device* device) {
     if (!res) return ctx;
 
     ctx._is_valid = TRUE;
+    ctx.block_size = 1024 << ctx._sb.log_block_size;
+    ctx.sectors_per_block = ctx.block_size / SECTOR_SIZE;
 
     return ctx;
 }
@@ -322,7 +316,7 @@ BOOL ext2_is_valid(ext2_context* ctx) {
     return ctx->_is_valid == TRUE;
 }
 
-ext2_inode* ext2_read_inode(ext2_context* ctx, ext2_bgd* bgd, uint32_t index) {
+BOOL ext2_read_inode(ext2_context* ctx, ext2_bgd* bgd, uint32_t index, ext2_inode* out) {
     uint32_t inode_addr = bgd->inode_table_ba * (1024 << ctx->_sb.log_block_size);
     inode_addr += index * ctx->_esb.inode_size;
 
@@ -335,38 +329,100 @@ ext2_inode* ext2_read_inode(ext2_context* ctx, ext2_bgd* bgd, uint32_t index) {
         lba,
         1);
     
-    if (!inodes) return NULL;
+    if (!inodes) return FALSE;
 
-    return (ext2_inode*)(inodes + inode_offset);
+    (*out) = *(ext2_inode*)(inodes + inode_offset);
+
+    return TRUE;
+}
+
+void* ext2_read_block(ext2_context* ctx, ext2_inode* inode, uint64_t block_number, io_buffer* buffer) {
+    if (block_number > 11) {
+        return NULL; // doesn't support large files
+    } else {
+        if (buffer->_size < ctx->block_size) return NULL;
+        if (inode->direct_bp[block_number] == 0) return NULL;
+
+        uint64_t lba = inode->direct_bp[block_number] * ctx->sectors_per_block;
+
+        return io_read(
+            ctx->_device, 
+            buffer, 
+            lba, 
+            ctx->sectors_per_block);
+    }
+}
+
+BOOL ext2_get_inode(ext2_context* ctx, uint32_t inode_nr, ext2_inode* out) {
+    uint32_t inode_bgrp = ext2_locate_inode_group(ctx, inode_nr);
+    uint32_t inode_index = ext2_locate_inode_index(ctx, inode_nr);
+
+    ext2_bgd bgd;
+
+    if (!ext2_read_bgdt(ctx, inode_bgrp, &bgd)) {
+        qemu_log("Failed to read bgd");
+        return FALSE;
+    }
+
+    ext2_inode inode;
+    
+    if (!ext2_read_inode(ctx, &bgd, inode_index, &inode)) {
+        qemu_log("Failed to read inode");
+        return FALSE;
+    }
+
+    (*out) = inode;
+    
+    return TRUE;
 }
 
 void ext2_root(ext2_context* ctx) {
-    uint32_t inode_nr = 2;
-    uint32_t inode_block = ext2_locate_inode_block(ctx, inode_nr);
-    uint32_t inode_index = ext2_locate_inode_index(ctx, inode_nr);
-    uint8_t  sectors_per_block = (1024 << ctx->_sb.log_block_size) / SECTOR_SIZE;
+    ext2_inode inode;
 
-    ext2_bgd* bgd = ext2_read_bgdt(ctx, inode_block);
-    ext2_inode* inode = ext2_read_inode(ctx, bgd, inode_index);
-    
-    uint64_t lba = inode->direct_bp0 * sectors_per_block;
-    
-    uint8_t* entries = (uint8_t*)io_read(
-        ctx->_device, 
-        &ctx->_buffer, 
-        lba, 
-        sectors_per_block);
+    if (!ext2_get_inode(ctx, 2, &inode)) {
+        return;
+    }
 
     qemu_log("Root directory: ");
 
-    for (size_t i = 0; i < sectors_per_block * SECTOR_SIZE;)
+    for (size_t i = 0; i < 12; i++)
     {
-        ext2_dir_entry* entry = (ext2_dir_entry*)(entries + i);
+        uint8_t* block = (uint8_t*)ext2_read_block(ctx, &inode, i, &ctx->_buffer);
         
-        qemu_log(entry->name);
+        if (block) {
+            for (size_t i = 0; i < ctx->sectors_per_block * SECTOR_SIZE;)
+            {
+                ext2_dir_entry* entry = (ext2_dir_entry*)(block + i);        
+                qemu_log(entry->name);
 
-        i += entry->size;
-    }   
+                if (entry->name[0] == 'r') {
+                    qemu_log("Found readme.txt");
+
+                    ext2_inode data_inode;
+
+                    if (!ext2_get_inode(ctx, entry->inode, &data_inode)) {
+                        qemu_log("Failed to get inode");
+                        return;
+                    }
+                    
+                    void* data = ext2_read_block(ctx, &data_inode, 0, &ctx->_buffer);
+                    
+                    if (data) {
+                        qemu_log(data);
+                    }
+                    else {
+                        qemu_log("Failed to read data");
+                    }
+                    return;
+                }
+
+                i += entry->size;
+            }
+        }
+        else {
+            break;
+        }
+    }
 }
 
 
