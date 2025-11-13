@@ -165,6 +165,7 @@ void _rest_of_start() {
 
 	ahci_init();
 
+
 	io_device device = {0};
 	device.read = ahci_read;
 	device.write = ahci_write;
@@ -172,11 +173,9 @@ void _rest_of_start() {
 	device.end_lba = 2048 + 2048 * 10; // (10MB file system)
 
 	ext2_context context = ext2_init(&device);
-	
 
 	ext2_root(&context);
-
-
+	
 	while(1) { hlt(); } // if we return to bootloader - we'll double fault
 	qemu_log("Out of loop ?_?");
 }

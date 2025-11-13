@@ -7,52 +7,8 @@
 #include "vmm.h"
 #include "serial.h"
 #include "print.h"
-
-typedef BOOL(*reader_t)(uint64_t lba, uint32_t sector_count, void* pbuffer);
-typedef BOOL(*writer_t)(uint64_t lba, uint32_t sector_count, void* pbuffer);
-
-typedef struct {
-    uint64_t start_lba;
-    uint64_t end_lba;
-    reader_t read;
-    writer_t write;
-} io_device;
-
-typedef struct {
-    void* vaddr;
-    void* _phys;
-    uint64_t _size;
-} io_buffer;
-
-io_buffer io_alloc_buffer(uint64_t page_count) {
-    void* phys;
-    void* vaddr = kpage_alloc_dma(page_count, &phys);
-    io_buffer buffer = {0};
-
-    if (vaddr == NULL) return buffer;
-
-    buffer.vaddr = vaddr;
-    buffer._phys = phys;
-    buffer._size = page_count * PAGE_SIZE;
-
-    return buffer;
-}
-
-void* io_read(io_device* dev, io_buffer* buffer, uint64_t lba, uint64_t sector_count) {
-    if (buffer->_size < sector_count * SECTOR_SIZE) return NULL;
-
-    if (dev->read(lba + dev->start_lba, sector_count, buffer->_phys)) {
-        return buffer->vaddr;
-    }
-
-    return NULL;
-}
-
-void io_release_buffer(io_buffer* buffer) {
-}
-
-
-
+#include "vfs.h"
+#include "math.h"
 
 #define EXT2_MAGIC 0xEF53
 #define EXT2_SYSTEM_STATE_CLEAN 0x1
@@ -201,8 +157,8 @@ typedef struct {
 typedef struct {
     uint32_t inode;
     uint16_t size;
-    uint8_t name_len; // lsb
-    uint8_t file_type; // msb (or type indicator if feature supported)
+    uint8_t name_len;
+    uint8_t file_type; // (type indicator if feature supported)
     char name[1];
 } ext2_dir_entry;
 
@@ -210,7 +166,7 @@ typedef struct {
 
 typedef struct {
     io_device* _device;
-    io_buffer _buffer;
+    io_buffer* _buffer;
     superblock _sb;
     extended_superblock _esb;
     BOOL _is_valid;
@@ -221,7 +177,7 @@ typedef struct {
 
 BOOL ext2_parse_superblock(ext2_context* ctx) {
     // read superblock (sectors 2-3)
-    void* data = io_read(ctx->_device, &ctx->_buffer, 2, 2);
+    void* data = io_read(ctx->_device, ctx->_buffer, 2, 2);
     
     if (!data) return FALSE;
 
@@ -249,11 +205,6 @@ uint32_t ext2_locate_inode_group(ext2_context* ctx, uint32_t inode) {
 uint32_t ext2_locate_inode_index(ext2_context* ctx, uint32_t inode) {
     return (inode - 1) % ctx->_sb.inodes_per_group;
 }
-/*
-uint32_t ext2_locate_inode_block(ext2_context* ctx, uint32_t index) {
-    return (index * ctx->_esb.inode_size) / ctx->block_size;
-}
-*/
 
 BOOL ext2_read_bgdt(ext2_context* ctx, uint32_t index, ext2_bgd* out) {
     // entry size is 32 bytes so -> 16 entries per sector
@@ -282,7 +233,7 @@ BOOL ext2_read_bgdt(ext2_context* ctx, uint32_t index, ext2_bgd* out) {
 
     ext2_bgd* bgdt = io_read(
         ctx->_device, 
-        &ctx->_buffer, 
+        ctx->_buffer, 
         lba,
         1);
 
@@ -325,7 +276,7 @@ BOOL ext2_read_inode(ext2_context* ctx, ext2_bgd* bgd, uint32_t index, ext2_inod
 
     uint8_t* inodes = io_read(
         ctx->_device, 
-        &ctx->_buffer, 
+        ctx->_buffer, 
         lba,
         1);
     
@@ -338,9 +289,9 @@ BOOL ext2_read_inode(ext2_context* ctx, ext2_bgd* bgd, uint32_t index, ext2_inod
 
 void* ext2_read_block(ext2_context* ctx, ext2_inode* inode, uint64_t block_number, io_buffer* buffer) {
     if (block_number > 11) {
-        return NULL; // doesn't support large files
+        return NULL; // doesn't support large files (yet)
     } else {
-        if (buffer->_size < ctx->block_size) return NULL;
+        if (io_get_size(buffer) < ctx->block_size) return NULL;
         if (inode->direct_bp[block_number] == 0) return NULL;
 
         uint64_t lba = inode->direct_bp[block_number] * ctx->sectors_per_block;
@@ -360,14 +311,12 @@ BOOL ext2_get_inode(ext2_context* ctx, uint32_t inode_nr, ext2_inode* out) {
     ext2_bgd bgd;
 
     if (!ext2_read_bgdt(ctx, inode_bgrp, &bgd)) {
-        qemu_log("Failed to read bgd");
         return FALSE;
     }
 
     ext2_inode inode;
     
     if (!ext2_read_inode(ctx, &bgd, inode_index, &inode)) {
-        qemu_log("Failed to read inode");
         return FALSE;
     }
 
@@ -376,56 +325,170 @@ BOOL ext2_get_inode(ext2_context* ctx, uint32_t inode_nr, ext2_inode* out) {
     return TRUE;
 }
 
-void ext2_root(ext2_context* ctx) {
-    ext2_inode inode;
+void ext2_release(ext2_context* ctx) {
+    io_release_buffer(&ctx->_buffer);
+}
 
-    if (!ext2_get_inode(ctx, 2, &inode)) {
-        return;
+typedef struct {
+    ext2_inode* inode;
+    uint32_t position;
+} ext2_vnode_data;
+
+
+BOOL ext2_open(ext2_context* ctx, uint32_t inode_nr, vnode* out) {
+    ext2_inode* inode = (ext2_inode*)kmalloc(sizeof(ext2_inode));
+    ext2_vnode_data* data = (ext2_vnode_data*)kmalloc(sizeof(ext2_vnode_data));
+    data->inode = inode;
+    data->position = 0;
+
+    if (!ext2_get_inode(ctx, inode_nr, inode)) {
+        return FALSE;
     }
 
-    qemu_log("Root directory: ");
+    out->data = (void*)data;
+    out->size = inode->size_lower32;
+    out->buffer = io_alloc_buffer(2); // make page count appropriate to double block size
 
-    for (size_t i = 0; i < 12; i++)
+    return TRUE;
+}
+
+BOOL ext2_open_entry(ext2_context* ctx, ventry* entry, vnode* out) {
+    return ext2_open(ctx, entry->id, out);
+}
+
+BOOL ext2_open_root(ext2_context* ctx, vnode* out) {
+    return ext2_open(ctx, 2, out);
+}
+
+BOOL ext2_readdir(ext2_context* ctx, vnode* dir, ventry* out) {
+    ext2_vnode_data* data = (ext2_vnode_data*)dir->data;
+
+    if (data->position >= dir->size) {
+        return FALSE;
+    }
+    
+    if (data->position % ctx->block_size == 0) {
+        uint8_t* block = (uint8_t*)ext2_read_block(ctx, data->inode, data->position / ctx->block_size, dir->buffer);
+
+        if (!block) {
+            return FALSE;
+        }
+    }
+
+    uint16_t block_position = data->position % ctx->block_size;
+
+    ext2_dir_entry* entry = (ext2_dir_entry*)((uint8_t*)io_get(dir->buffer) + block_position);
+    
+    data->position += entry->size;
+
+    for (size_t i = 0; i < entry->name_len; i++)
     {
-        uint8_t* block = (uint8_t*)ext2_read_block(ctx, &inode, i, &ctx->_buffer);
-        
-        if (block) {
-            for (size_t i = 0; i < ctx->sectors_per_block * SECTOR_SIZE;)
-            {
-                ext2_dir_entry* entry = (ext2_dir_entry*)(block + i);        
-                qemu_log(entry->name);
-
-                if (entry->name[0] == 'r') {
-                    qemu_log("Found readme.txt");
-
-                    ext2_inode data_inode;
-
-                    if (!ext2_get_inode(ctx, entry->inode, &data_inode)) {
-                        qemu_log("Failed to get inode");
-                        return;
-                    }
-                    
-                    void* data = ext2_read_block(ctx, &data_inode, 0, &ctx->_buffer);
-                    
-                    if (data) {
-                        qemu_log(data);
-                    }
-                    else {
-                        qemu_log("Failed to read data");
-                    }
-                    return;
-                }
-
-                i += entry->size;
-            }
-        }
-        else {
-            break;
-        }
+        out->name[i] = entry->name[i];
     }
+
+    out->name[entry->name_len] = '\0';
+    out->id = entry->inode;
+
+    return TRUE;
+}
+
+void ext2_closedir(vnode* dir) {
+    ext2_close(dir);
+}
+
+void ext2_close(vnode* node) {
+    ext2_vnode_data* data = (ext2_vnode_data*)node->data;
+    kfree(data->inode);
+
+    kfree(node->data);
+    kfree(node->name);
+    io_release_buffer(node->buffer);
+}
+
+uint64_t copy(void* src, void* dst, uint64_t len) {
+    for (uint64_t i = 0; i < len; i++) {
+        ((uint8_t*)dst)[i] = ((uint8_t*)src)[i];
+    }
+
+    return len;
+}
+
+uint64_t copy_to(void* src, void* dst, uint64_t dest_start, uint64_t len) {
+    for (uint64_t i = 0; i < len; i++) {
+        ((uint8_t*)dst)[dest_start + i] = ((uint8_t*)src)[i];
+    }
+
+    return len;
+}
+
+uint64_t ext2_readfile(ext2_context* ctx, vnode* node, void* buffer, uint64_t len) {
+    ext2_vnode_data* data = (ext2_vnode_data*)node->data;
+    uint32_t first_block = data->position / ctx->block_size;
+    len = min(len, node->size - data->position);
+    uint32_t end_block = (data->position + len) / ctx->block_size;
+    uint64_t buf_pos = 0;
+
+    if (data->position % ctx->block_size != 0) {
+        uint8_t* block = (uint8_t*)ext2_read_block(ctx, data->inode, first_block, node->buffer);
+        buf_pos += copy(buffer, block, min(ctx->block_size - (data->position % ctx->block_size), len));
+    }
+
+    for (uint32_t i = first_block + 1; i < end_block; i++) {
+        uint8_t* block = (uint8_t*)ext2_read_block(ctx, data->inode, i, node->buffer);
+        buf_pos += copy_to(block, buffer, buf_pos, ctx->block_size);
+    }
+
+    if (first_block != end_block || (data->position % ctx->block_size == 0)) {
+        uint8_t* block = (uint8_t*)ext2_read_block(ctx, data->inode, end_block, node->buffer);
+        copy_to(block, buffer, buf_pos, len - buf_pos);
+    }
+
+    data->position += len;
+
+    return len;
 }
 
 
-void ext2_release(ext2_context* ctx) {
-    io_release_buffer(&ctx->_buffer);
+void ext2_root(ext2_context* ctx) {
+    vnode root;
+
+    if (!ext2_open_root(ctx, &root)) {
+        qemu_log("Failed to open root");
+        return;
+    }
+
+    ventry entry;
+
+    while (1)
+    {
+        if (!ext2_readdir(ctx, &root, &entry)) {
+            break;
+        }
+        
+        qemu_log(entry.name);
+
+        if (strcmp(entry.name, "readme.txt") == 0) {
+            qemu_log("Found readme.txt");
+
+            vnode readme_file;            
+
+            if (!ext2_open_entry(ctx, &entry, &readme_file)) {
+                return;
+            }
+
+            void* data = kpage_alloc(1);
+
+            if (!ext2_readfile(ctx, &readme_file, data, 1024)) {
+                return;
+            }
+
+            qemu_log(data);
+
+            kpage_free(data, 1);
+            ext2_close(&readme_file);
+
+        }
+    }
+
+    ext2_close(&root);
 }

@@ -77,3 +77,15 @@ const char* int_to_hex(unsigned long long value){
 
     return buffer;   
 }
+
+int strcmp(const char *string1, const char *string2) {
+    size_t index = 0;
+
+    while (string1[index] == string2[index])
+    {
+        if (string1[index] == '\0') return 0;
+        ++index;
+    }
+
+    return string1[index] - string2[index];
+}

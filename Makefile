@@ -50,7 +50,7 @@ $(BOOT_IMAGE): $(BUILD_DIR)/linked.elf
 	dd if=build/raw_boot_image of=build/boot_image bs=1M count=1 conv=sync
 
 	mkdir -p build/rootfs
-	echo "hello world" > build/rootfs/readme.txt
+	echo "<START OF FILE> \n hello world \n <END OF FILE>" > build/rootfs/readme.txt
 
 	genext2fs -b 10240 -d build/rootfs build/fs.ext2
 

@@ -313,7 +313,7 @@ void* get_4kb_aligned_address(void* addr) {
 
 /* Internal Functions */
 
-uint8_t _kmalloc_split_page_block_length[] = {8, 16, 32, 64, 128, 256, 512, 1024, 2048};
+uint16_t _kmalloc_split_page_block_length[] = {8, 16, 32, 64, 128, 256, 512, 1024, 2048};
 
 uint64_t ke_get_block_length(kmalloc_entry_metadata_t* metadata) {
     if (metadata->compressed_length < sizeof(_kmalloc_split_page_block_length)) {
@@ -485,7 +485,8 @@ void* kmalloc(size_t len) {
         return addr;
     }
 
-    void* page = kpage_alloc(1);
+    void* page = kpage_alloc(1);    
+
     _kmalloc_setup_page_memory(page, &metadata);  
     
     return kmalloc(len);
