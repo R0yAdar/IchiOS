@@ -474,8 +474,10 @@ void* kmalloc(size_t len) {
     }
 
     if (len < MINIMUM_BLOCK_SIZE) len = MINIMUM_BLOCK_SIZE;
+    
+    len = _kmalloc_fl_roundup_2power(len);
 
-    ke_set_block_length(&metadata, _kmalloc_fl_roundup_2power(len));
+    ke_set_block_length(&metadata, len);
     uint8_t index = _kmalloc_fl_size_to_index(len);
 
     void* addr = _kmalloc_fl_get(len);

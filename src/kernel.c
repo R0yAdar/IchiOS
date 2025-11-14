@@ -172,10 +172,16 @@ void _rest_of_start() {
 	device.start_lba = 2048; // skip first 2048 sectors (1MB)
 	device.end_lba = 2048 + 2048 * 10; // (10MB file system)
 
-	ext2_context context = ext2_init(&device);
-
-	ext2_root(&context);
+	ext2_context* context = ext2_init(&device);
 	
+	if (context) {
+		qemu_log("init ext2 context");
+
+		ext2_root(context);
+
+		ext2_release(context);
+	}
+
 	while(1) { hlt(); } // if we return to bootloader - we'll double fault
 	qemu_log("Out of loop ?_?");
 }
