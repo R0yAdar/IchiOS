@@ -20,6 +20,8 @@ void* kpage_alloc(size_t page_count);
 
 void* kpage_alloc_dma(size_t page_count, void** out_phys_address);
 
+void kpage_free_dma(size_t page_count, void* vaddr, void* phys);
+
 void kpage_free(void* vaddr, size_t page_count);
 
 void* kmalloc(size_t len);

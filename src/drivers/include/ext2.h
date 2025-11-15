@@ -1,3 +1,7 @@
+
+#ifndef EXT2_H
+#define EXT2_H
+
 /*
     EXT2 FILESYSTEM Driver
     Only supports LE systems, because who cares.
@@ -199,3 +203,8 @@ void ext2_close(vnode* node);
 uint64_t ext2_readfile(ext2_context* ctx, vnode* node, void* buffer, uint64_t len);
 
 void ext2_root(ext2_context* ctx);
+
+
+extern vfs_ops ext2_ops;
+
+#endif

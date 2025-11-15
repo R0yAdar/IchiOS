@@ -227,6 +227,14 @@ void* kpage_alloc_dma(size_t page_count, void** out_phys_address) {
     return vaddr;
 }
 
+void kpage_free_dma(size_t page_count, void* vaddr, void* phys) {
+    if (!phys || !vaddr) return NULL;
+    pmm_free_blocks(phys, page_count);
+
+    
+    // remove virtual mapping
+}
+
 
 void kpage_free(void* vaddr, size_t page_count) {
     if (vaddr == NULL) return;
@@ -474,7 +482,6 @@ void* kmalloc(size_t len) {
     }
 
     if (len < MINIMUM_BLOCK_SIZE) len = MINIMUM_BLOCK_SIZE;
-    
     len = _kmalloc_fl_roundup_2power(len);
 
     ke_set_block_length(&metadata, len);

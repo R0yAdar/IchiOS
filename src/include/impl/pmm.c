@@ -125,7 +125,6 @@ void pmm_free_blocks(void* start, uint32_t count) {
     uint64_t cell_index;
     uint32_t bit_index;
 
-
     for (uint64_t i = 0; i < count; ++i, ++index)
     {
         cell_index = index / BITMAP_CELL_BIT_SIZE;

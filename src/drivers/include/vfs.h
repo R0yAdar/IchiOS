@@ -3,10 +3,12 @@
 
 #include "types.h"
 
+/*
+    IO DEVICE
+*/
+
 typedef BOOL(*reader_t)(uint64_t lba, uint32_t sector_count, void* pbuffer);
 typedef BOOL(*writer_t)(uint64_t lba, uint32_t sector_count, void* pbuffer);
-
-typedef struct io_buffer io_buffer;
 
 typedef struct {
     uint64_t start_lba;
@@ -14,6 +16,9 @@ typedef struct {
     reader_t read;
     writer_t write;
 } io_device;
+
+
+typedef struct io_buffer io_buffer;
 
 uint64_t io_get_size(io_buffer* buffer);
 
@@ -25,6 +30,10 @@ void* io_get(io_buffer* buffer);
 
 void io_release_buffer(io_buffer* buffer);
 
+/*
+    VFS
+*/
+
 typedef enum  {
     READ,
 } file_access_mode;
@@ -34,26 +43,30 @@ typedef struct {
     void* data;
     io_buffer* buffer;
     uint64_t size;
+    uint32_t flags;
 } vnode;
 
 typedef struct {
-    char name[257];
+    char name[256];
     uint64_t id;
 } ventry;
 
+typedef struct mounted_fs mounted_fs;
+
 typedef struct {
-    void** vnode;
+    vnode* vnode;
     uint64_t size;
     uint64_t position;
     file_access_mode mode;
+    mounted_fs* mountpoint;
 } file;
 
 typedef struct {
-    void** vnode;
+    void* vnode;
 } dir;
 
 typedef struct {
-    void** vnode;
+    void* vnode;
 } dir_entry;
 
 dir* opendir(const char* path);
@@ -70,39 +83,26 @@ size_t fwrite(void* buffer, uint64_t size, uint64_t count, file* f);
 
 void fclose(file* f);
 
-typedef dir*(*opendir_t)(const char* path);
-typedef dir_entry*(*readdir_t)(const char* path);
-typedef void(closedir_t)(const char* path);
-typedef file*(*fopen_t)(const char* path, file_access_mode mode);
-typedef size_t(*fread_t)(void* buffer, uint64_t size, uint64_t count, file* f);
-typedef size_t(*fwrite_t)(void* buffer, uint64_t size, uint64_t count, file* f);
-typedef void(*fclose_t)(file* f);
-
-typedef struct
-{
-    opendir_t*  opendir;
-    readdir_t*  readdir;
-    closedir_t* closedir;
-    fopen_t*    fopen;
-    fread_t*    fread;
-    fwrite_t*   fwrite;
-    fclose_t*   fclose;
-} vnodeops;
-
-typedef struct vnode
-{
-    char path[256];
-};
+typedef BOOL(*open_root_callback)(void* ctx, vnode* out);
+typedef BOOL(*open_callback)(void* ctx, ventry* entry, vnode* out);
+typedef BOOL(*readdir_callback)(void* ctx, vnode* node, ventry* out);
+typedef uint64_t (*readfile_callback)(void* ctx, vnode* node, void* buffer, uint64_t len);
+typedef void(*close_callback)(vnode* node);
 
 
 typedef struct {
-    void* device;
+    open_root_callback open_root;
+    open_callback open;
+    readdir_callback readdir;
+    readfile_callback readfile;
+    close_callback close;
+} vfs_ops;
+
+typedef struct {
     void* context;
-    vnodeops* ops;
+    vfs_ops* ops;
 } file_system;
 
-// resort to vnode!
-
-char mount(file_system fs);
+BOOL mount(file_system fs, const char* path);
 
 #endif

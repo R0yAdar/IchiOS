@@ -173,15 +173,36 @@ void _rest_of_start() {
 	device.end_lba = 2048 + 2048 * 10; // (10MB file system)
 
 	ext2_context* context = ext2_init(&device);
+	file_system fs = {0};
+	fs.ops = &ext2_ops;
+	fs.context = context;
 	
-	if (context) {
-		qemu_log("init ext2 context");
-
-		ext2_root(context);
-
-		ext2_release(context);
+	if (!mount(fs, "/")) {
+		qemu_log("Failed to mount");
+	} else {
+		qemu_log("Mounted");
 	}
 
+	file* f = fopen("/readme.txt", READ);
+
+	if (!f) {
+		qemu_log("Failed to open file");
+	} else {
+		qemu_log("Opened file");
+	}
+
+	void* data = kpage_alloc(1);
+
+	qemu_log("Allocated page");
+
+	fread(data, 1, 1024, f);
+
+	qemu_log("Read file from main");
+
+	fclose(f);
+
+	qemu_log(data);
+	
 	while(1) { hlt(); } // if we return to bootloader - we'll double fault
 	qemu_log("Out of loop ?_?");
 }

@@ -237,8 +237,8 @@ void ext2_closedir(vnode* dir) {
 
 void ext2_close(vnode* node) {
     ext2_vnode_data* data = (ext2_vnode_data*)node->data;
+    
     kfree(data->inode);
-
     kfree(node->data);
     kfree(node->name);
     io_release_buffer(node->buffer);
@@ -287,47 +287,10 @@ uint64_t ext2_readfile(ext2_context* ctx, vnode* node, void* buffer, uint64_t le
     return len;
 }
 
-
-void ext2_root(ext2_context* ctx) {
-    vnode root;
-
-    if (!ext2_open_root(ctx, &root)) {
-        qemu_log("Failed to open root");
-        return;
-    }
-
-    ventry entry;
-
-    while (1)
-    {
-        if (!ext2_readdir(ctx, &root, &entry)) {
-            break;
-        }
-        
-        qemu_log(entry.name);
-
-        if (strcmp(entry.name, "readme.txt") == 0) {
-            qemu_log("Found readme.txt");
-
-            vnode readme_file;            
-
-            if (!ext2_open_entry(ctx, &entry, &readme_file)) {
-                return;
-            }
-
-            void* data = kpage_alloc(1);
-
-            if (!ext2_readfile(ctx, &readme_file, data, 1024)) {
-                return;
-            }
-
-            qemu_log(data);
-
-            kpage_free(data, 1);
-            ext2_close(&readme_file);
-
-        }
-    }
-
-    ext2_close(&root);
-}
+vfs_ops ext2_ops = {
+    .open_root = ext2_open_root,
+    .open = ext2_open_entry,
+    .readdir = ext2_readdir,
+    .readfile = ext2_readfile,
+    .close = ext2_close
+};
