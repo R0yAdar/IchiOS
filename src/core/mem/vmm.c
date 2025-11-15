@@ -17,7 +17,6 @@ typedef enum {
     PTABLE_LVL_PTE = 1
 } PTABLE_LVL;
 
-void* _mmio_mapping_cur = (void*)RAM_MMIO_MAPPING_OFFSET;
 pte_t* _root_table;
 BOOL _is_post_init = FALSE;
 
@@ -161,12 +160,12 @@ void direct_map_kernel() {
 
 void* map_mmio_region(void* phys_start, void* phys_end) {
     uint64_t offset = (uint64_t)phys_start - (uint64_t)ALIGN_4KB(phys_start);
-    uint64_t start_address = (uint64_t)_mmio_mapping_cur;
+    void* vaddr = (void*)(RAM_MMIO_MAPPING_OFFSET | (uint64_t)phys_start);
+    void* current_vaddr = vaddr;
 
     while (phys_start < (uint64_t)phys_end)
     {
-        void* vaddr = _mmio_mapping_cur;
-        pte_t* entry = init_mapping_entry(vaddr, phys_start);
+        pte_t* entry = init_mapping_entry(current_vaddr, phys_start);
 
         if (entry == NULL) return NULL;
 
@@ -174,13 +173,13 @@ void* map_mmio_region(void* phys_start, void* phys_end) {
         mark_user_space(entry);
         mark_non_cacheable(entry);
         assign_address(entry, phys_start);
-        flush_tlb(vaddr);
+        flush_tlb(current_vaddr);
         
         phys_start = (void*)((uint64_t)phys_start + PAGE_SIZE);
-        _mmio_mapping_cur = (void*)((uint64_t)_mmio_mapping_cur + PAGE_SIZE);
+        current_vaddr = (void*)((uint64_t)current_vaddr + PAGE_SIZE);
     }
 
-    return (void*)(start_address + offset);
+    return vaddr;
 }
 
 // creates new tables and maps first 2MB of memory to higher half kernel space
@@ -229,10 +228,11 @@ void* kpage_alloc_dma(size_t page_count, void** out_phys_address) {
 
 void kpage_free_dma(size_t page_count, void* vaddr, void* phys) {
     if (!phys || !vaddr) return NULL;
+    // you can verify that phys and vaddr match
+
     pmm_free_blocks(phys, page_count);
 
-    
-    // remove virtual mapping
+    // TODO: remove virtual mapping
 }
 
 

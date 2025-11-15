@@ -115,15 +115,17 @@ const char* strchr(const char* str, char character) {
     return *str == '\0' ? NULL : str;
 }
 
-int strncmp(const char* str1, const char* str2, size_t num) {
+int strncmp(const char *str1, const char *str2, size_t num)
+{
     size_t i = 0;
 
-    while (str1[i] == str2[i] && str1[i] != '\0' && i < num)
-    {
-        ++i;
-    }
+    while (i < num && str1[i] == str2[i] && str1[i] != '\0')
+        i++;
 
-    return str1[i] - str2[i];
+    if (i == num)
+        return 0;
+
+    return (unsigned char)str1[i] - (unsigned char)str2[i];
 }
 
 char* strcpy(char* destination, const char* source) {

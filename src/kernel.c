@@ -28,6 +28,7 @@ extern uint64_t __bss_end;
 extern uint64_t __kernel_origin;
 
 void* _top_of_kernel_stack = NULL;
+io_device device = {0};
 tss _tss = {0};
 
 void __early_zero_bss(void* bss_start, void* bss_end) {
@@ -101,6 +102,24 @@ void key_callback(uint8_t scancode, BOOL pressed) {
 	}
 }
 
+void mount_root_fs() {
+	device.read = ahci_read;
+	device.write = ahci_write;
+	device.start_lba = 2048; // skip first 2048 sectors (1MB)
+	device.end_lba = 2048 + 2048 * 10; // (10MB file system)
+
+	ext2_context* context = ext2_init(&device);
+	file_system fs = {0};
+	fs.ops = &ext2_ops;
+	fs.context = context;
+	
+	if (!mount(fs, "/")) {
+		qemu_log("Failed to mount");
+	} else {
+		qemu_log("Mounted ahci-ext2 fs");
+	}
+}
+
 void _start_kernel(multiboot_info* info) {
 	serial_init();
 	vga_clear_screen();
@@ -165,25 +184,9 @@ void _rest_of_start() {
 
 	ahci_init();
 
+	mount_root_fs();
 
-	io_device device = {0};
-	device.read = ahci_read;
-	device.write = ahci_write;
-	device.start_lba = 2048; // skip first 2048 sectors (1MB)
-	device.end_lba = 2048 + 2048 * 10; // (10MB file system)
-
-	ext2_context* context = ext2_init(&device);
-	file_system fs = {0};
-	fs.ops = &ext2_ops;
-	fs.context = context;
-	
-	if (!mount(fs, "/")) {
-		qemu_log("Failed to mount");
-	} else {
-		qemu_log("Mounted");
-	}
-
-	file* f = fopen("/readme.txt", READ);
+	file* f = fopen("/files/readme.txt", READ);
 
 	if (!f) {
 		qemu_log("Failed to open file");

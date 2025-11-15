@@ -7,7 +7,10 @@
 #include "serial.h"
 #include "print.h"
 #include "math.h"
+#include "array.h"
 #include "ext2.h"
+
+/// EXT2 FILESYSTEM INTERNAL STRUCTURES
 
 struct ext2_context {
     io_device* _device;
@@ -17,6 +20,13 @@ struct ext2_context {
     uint32_t block_size;
     uint32_t sectors_per_block;
 };
+
+typedef struct {
+    ext2_inode* inode;
+    uint32_t position;
+} ext2_vnode_data;
+
+/// EXT2 FILESYSTEM IMPLEMENTATION
 
 BOOL ext2_parse_superblock(ext2_context* ctx) {
     // read superblock (sectors 2-3)
@@ -125,9 +135,62 @@ BOOL ext2_read_inode(ext2_context* ctx, ext2_bgd* bgd, uint32_t index, ext2_inod
     return TRUE;
 }
 
+void* read_indirect_block(ext2_context* ctx, uint32_t indirect_block_address, uint32_t block_number, io_buffer* buffer) {
+    uint64_t lba = indirect_block_address * ctx->sectors_per_block;
+    
+    uint32_t* bps = (uint32_t*)io_read(
+        ctx->_device, 
+        ctx->_buffer,
+        lba, 
+        ctx->sectors_per_block);
+
+    if (!bps) return NULL;
+
+    return io_read(
+        ctx->_device,
+        buffer ? buffer : ctx->_buffer,
+        bps[block_number],
+        ctx->sectors_per_block
+    );
+}
+
+
 void* ext2_read_block(ext2_context* ctx, ext2_inode* inode, uint64_t block_number, io_buffer* buffer) {
-    if (block_number > 11) {
-        return NULL; // doesn't support large files (yet)
+    // assert block_number < int32.max
+    const uint32_t DIRECT_BLOCKS_COUNT = 12;
+
+    const uint32_t SINGLY_INDIRECT_BLOCKS_COUNT = ctx->block_size / sizeof(uint32_t);
+    const uint32_t DOUBLY_INDIRECT_BLOCKS_COUNT = SINGLY_INDIRECT_BLOCKS_COUNT * SINGLY_INDIRECT_BLOCKS_COUNT;
+    const uint32_t TRIPLY_INDIRECT_BLOCKS_COUNT = SINGLY_INDIRECT_BLOCKS_COUNT * DOUBLY_INDIRECT_BLOCKS_COUNT;
+
+    if (block_number >= DIRECT_BLOCKS_COUNT) {
+        uint32_t relative_block = block_number - DIRECT_BLOCKS_COUNT;
+
+        // case 1: singly indirect block
+        if (block_number < SINGLY_INDIRECT_BLOCKS_COUNT) {
+            return read_indirect_block(ctx, inode->singly_indirect_bp, relative_block, buffer);
+        }
+
+        relative_block -= SINGLY_INDIRECT_BLOCKS_COUNT;
+
+        // case 2: doubly indirect block
+        if (block_number < DOUBLY_INDIRECT_BLOCKS_COUNT) {
+            void* level1 = read_indirect_block(ctx, inode->doubly_indirect_bp, relative_block / SINGLY_INDIRECT_BLOCKS_COUNT, NULL);
+            if (!level1) return NULL;
+            return read_indirect_block(ctx, level1, relative_block % SINGLY_INDIRECT_BLOCKS_COUNT, buffer);
+        }
+
+        relative_block -= DOUBLY_INDIRECT_BLOCKS_COUNT;
+
+        // case 3: triply indirect block
+        if (block_number < TRIPLY_INDIRECT_BLOCKS_COUNT) {
+            void* level1 = read_indirect_block(ctx, inode->triply_indirect_bp, relative_block / DOUBLY_INDIRECT_BLOCKS_COUNT, NULL);
+            if (!level1) return NULL;
+            relative_block = relative_block % DOUBLY_INDIRECT_BLOCKS_COUNT;
+            void* level2 = read_indirect_block(ctx, level1, relative_block / SINGLY_INDIRECT_BLOCKS_COUNT, NULL);
+            if (!level2) return NULL;
+            return read_indirect_block(ctx, level2, relative_block % SINGLY_INDIRECT_BLOCKS_COUNT, buffer);
+        }
     } else {
         if (io_get_size(buffer) < ctx->block_size) return NULL;
         if (inode->direct_bp[block_number] == 0) return NULL;
@@ -167,11 +230,6 @@ void ext2_release(ext2_context* ctx) {
     io_release_buffer(&ctx->_buffer);
     kfree(ctx);
 }
-
-typedef struct {
-    ext2_inode* inode;
-    uint32_t position;
-} ext2_vnode_data;
 
 
 BOOL ext2_open(ext2_context* ctx, uint32_t inode_nr, vnode* out) {
@@ -242,22 +300,6 @@ void ext2_close(vnode* node) {
     kfree(node->data);
     kfree(node->name);
     io_release_buffer(node->buffer);
-}
-
-uint64_t copy(void* src, void* dst, uint64_t len) {
-    for (uint64_t i = 0; i < len; i++) {
-        ((uint8_t*)dst)[i] = ((uint8_t*)src)[i];
-    }
-
-    return len;
-}
-
-uint64_t copy_to(void* src, void* dst, uint64_t dest_start, uint64_t len) {
-    for (uint64_t i = 0; i < len; i++) {
-        ((uint8_t*)dst)[dest_start + i] = ((uint8_t*)src)[i];
-    }
-
-    return len;
 }
 
 uint64_t ext2_readfile(ext2_context* ctx, vnode* node, void* buffer, uint64_t len) {

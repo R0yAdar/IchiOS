@@ -53,8 +53,8 @@ mounted_fs* find_mountpoint(const char* path) {
 }
 
 vnode* traverse_path(mounted_fs* mountpoint, const char* path) {
-    vnode node;
-    ventry entry;
+    vnode node = {0};
+    ventry entry = {0};
 
     if (!mountpoint->fs.ops->open_root(mountpoint->fs.context, &node)) return NULL;
 
@@ -62,14 +62,14 @@ vnode* traverse_path(mounted_fs* mountpoint, const char* path) {
     
     while (seperator)
     {
-        while (!mountpoint->fs.ops->readdir(mountpoint->fs.context, &node, &entry))
+        while (mountpoint->fs.ops->readdir(mountpoint->fs.context, &node, &entry))
         {
             if (strncmp(entry.name, path, seperator - path) == 0) {
                 break;
             }
         }
 
-        if (!strncmp(entry.name, path, seperator - path) == 0) {
+        if (strncmp(entry.name, path, seperator - path) != 0) {
             return NULL;
         }
 
