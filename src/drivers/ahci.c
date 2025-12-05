@@ -308,6 +308,4 @@ BOOL ahci_init() {
 	}
 
     probe_port(hba);
-
-	//read(0, 0, )
 }

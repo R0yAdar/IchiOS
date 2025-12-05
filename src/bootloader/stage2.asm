@@ -3,10 +3,10 @@ section .stage2
 
 [bits 16]
 
-
 %include "src/bootloader/gdt32.inc"
 %include "src/bootloader/gdt64.inc"
 %include "src/bootloader/memory.inc"
+%include "src/bootloader/vbe.inc"
 
 boot_info:
 istruc multiboot_info
@@ -28,7 +28,7 @@ istruc multiboot_info
 	at multiboot_info.bootloader_name,	dd 0
 	at multiboot_info.apm_table,		dd 0
 	at multiboot_info.vbe_control_info,	dd 0
-	at multiboot_info.vbe_mode_info,	dw 0
+	at multiboot_info.vbe_mode_info,	dd 0
 	at multiboot_info.vbe_interface_seg,dw 0
 	at multiboot_info.vbe_interface_off,dw 0
 	at multiboot_info.vbe_interface_len,dw 0
@@ -50,14 +50,20 @@ call	BiosGetMemorySize64MB
 mov	dword [multiboot_info.memoryHi], ebx
 mov	dword [multiboot_info.memoryLo], eax
 
-
-
 mov		eax, 0x0
 mov		es, ax
+
 mov		di, MMAP_ADDRESS
-mov dword [multiboot_info.mmap_addr], MMAP_ADDRESS
 mov 	si, multiboot_info.mmap_length
 call	BiosGetMemoryMap
+
+mov dword [multiboot_info.mmap_addr], MMAP_ADDRESS
+
+mov dword [multiboot_info.vbe_mode_info], vbe_mode_info
+
+call VbeInit
+
+; set protected mode
 
 mov eax, cr0
 or eax, 1
@@ -89,7 +95,7 @@ print_string_end:
 
 start_prot_mode:
 
-mov esp, 0x6000 ;stack_top
+mov esp, PROT32_STACK_TOP
 
 mov ax, DATA_SEG32
 mov ds, ax
@@ -134,6 +140,9 @@ mov ebx, a20_msg
 call print_string32
 
 lgdt [gdt64_pseudo_descriptor]
+
+mov ebx, long_mode_msg
+call print_string32
 
 jmp CODE_SEG64:start_long_mode
 
@@ -264,7 +273,7 @@ build_page_table:
 		loop set_page_table_entry
 	popa
 	ret
-	
+
 
 [bits 64]
 start_long_mode:
@@ -286,10 +295,12 @@ end64:
 
 START_OF_PAGE_TABLES equ 0x1000 ; goes until 0x5000 (0x1000 per tables)
 MMAP_ADDRESS equ 0x5000
+PROT32_STACK_TOP equ 0x6000
 
 stage2_msg: db "Hello from stage 2", 13, 10, 0
 stage2_protected_msg: db "Hello from protected mode!", 13, 10, 0
 a20_msg: db "Enabled A20 line!", 13, 10, 0
+long_mode_msg: db "Ichi jumps to long mode", 13, 10, 0
 comp_mode_msg: db "Ichi entered 64 bit compatability mode", 0
 
 section .bss

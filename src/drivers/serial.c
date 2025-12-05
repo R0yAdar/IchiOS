@@ -44,5 +44,5 @@ void serial_init() {
    port_outb(PORT_COM1 + 2, 0xC7);
    port_outb(PORT_COM1 + 4, 0x0B);
 
-   	qemu_log("Hello QEMU, Ichi started!");
+   qemu_log("Hello QEMU, Ichi started!");
 }

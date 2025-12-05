@@ -124,6 +124,13 @@ typedef struct {
     Definitions
 */
 
+#define GDT_NULL_OFFSET 0
+#define GDT_CODE_PL0_OFFSET (1 * sizeof(gdt_desc))
+#define GDT_DATA_PL0_OFFSET (2 * sizeof(gdt_desc))
+#define GDT_CODE_PL3_OFFSET (3 * sizeof(gdt_desc))
+#define GDT_DATA_PL3_OFFSET (4 * sizeof(gdt_desc))
+#define GDT_TSS_OFFSET (5 * sizeof(gdt_desc))
+
 idt_descriptor idt_create_descriptor(void* handler);
  
 gdt_desc gdt_create_descriptor(uint32_t base, uint32_t limit, uint16_t flag);

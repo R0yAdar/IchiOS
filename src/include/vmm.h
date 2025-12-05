@@ -6,6 +6,8 @@
 
 #define HIGHER_HALF_KERNEL_OFFSET 0xffffffff80000000
 
+void* vphys_address(void* phys);
+
 ERROR_CODE init_vmem();
 
 void* vmem_allocate_page();

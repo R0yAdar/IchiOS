@@ -17,6 +17,7 @@
 #include "pci.h"
 #include "serial.h"
 #include "ext2.h"
+#include "framebuffer.h"
 
 #define ARRAY_SIZE(arr) ((int)sizeof(arr) / (int)sizeof((arr)[0]))
 #define KERNEL_STACK_SIZE 4
@@ -30,6 +31,7 @@ extern uint64_t __kernel_origin;
 void* _top_of_kernel_stack = NULL;
 io_device device = {0};
 tss _tss = {0};
+vbe_mode_info_structure vbe_mode_info;
 
 void __early_zero_bss(void* bss_start, void* bss_end) {
     uint64_t* ptr = (uint64_t*)bss_start;
@@ -49,6 +51,13 @@ void __early_init_pmm(multiboot_info* info) {
 	context.kernel_ram_size = ((uint64_t)&__bss_end - (uint64_t)&__kernel_origin) + KERNEL_PHYS_OFFSET;
 	
 	pmm_init(&context);
+}
+
+void __early_init_framebuffer(multiboot_info* info) {
+	qemu_log("Saving framebuffer info...");
+	vbe_mode_info_structure* mode_info = (vbe_mode_info_structure*)info->m_vbe_mode_info;
+	qemu_log_int(mode_info->framebuffer);
+	vbe_mode_info = *mode_info;
 }
 
 void _rest_of_start();
@@ -127,6 +136,7 @@ void _start_kernel(multiboot_info* info) {
 	
 	__early_zero_bss(&__bss_start, &__bss_end);
 	__early_init_pmm(info);
+	__early_init_framebuffer(info);
 	println("INIT PMM MEMORY MANAGER");
 
 	init_idt();
@@ -198,13 +208,36 @@ void _rest_of_start() {
 
 	qemu_log("Allocated page");
 
-	fread(data, 1, 1024, f);
+	size_t read_len = fread(data, 1, 1024, f);
 
 	qemu_log("Read file from main");
+	qemu_log_int(read_len);
 
 	fclose(f);
 
+	qemu_log("hi!!");
+	printxln(vbe_mode_info.framebuffer);
+	printxln(HIGHER_HALF_KERNEL_OFFSET);
+	void* framebuf = vphys_address(vbe_mode_info.framebuffer);
+	qemu_log_int(vbe_mode_info.width);
+	qemu_log_int(framebuf);
+
+	if (!framebuf) {
+		qemu_log("failed to get framebuffer");
+		return;
+	}
+
+	for (size_t i = 0; i < 10000; i++)
+	{
+		((uint32_t*)framebuf)[i] = 0x10293;
+	}
+
+	qemu_log("tried to draw something");
+	
+	
+
 	qemu_log(data);
+	syscall(0, 0);
 	
 	while(1) { hlt(); } // if we return to bootloader - we'll double fault
 	qemu_log("Out of loop ?_?");

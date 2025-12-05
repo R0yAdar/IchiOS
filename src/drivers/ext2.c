@@ -97,7 +97,6 @@ BOOL ext2_read_bgdt(ext2_context* ctx, uint32_t index, ext2_bgd* out) {
     return TRUE;
 }
 
-
 ext2_context* ext2_init(io_device* device) {
     ext2_context* ctx = kmalloc(sizeof(ext2_context));
     BOOL res;
@@ -135,21 +134,27 @@ BOOL ext2_read_inode(ext2_context* ctx, ext2_bgd* bgd, uint32_t index, ext2_inod
     return TRUE;
 }
 
-void* read_indirect_block(ext2_context* ctx, uint32_t indirect_block_address, uint32_t block_number, io_buffer* buffer) {
+void* load_indirect_block(ext2_context* ctx, uint32_t indirect_block_address) {
     uint64_t lba = indirect_block_address * ctx->sectors_per_block;
     
-    uint32_t* bps = (uint32_t*)io_read(
+    return (uint32_t*)io_read(
         ctx->_device, 
         ctx->_buffer,
-        lba, 
+        lba,
         ctx->sectors_per_block);
+    
+}
 
+void* read_indirect_block(ext2_context* ctx, uint32_t* bps, uint32_t index, io_buffer* buffer) {
     if (!bps) return NULL;
+    if (bps[index] == 0) return NULL;
+
+    uint64_t lba = bps[index] * ctx->sectors_per_block;
 
     return io_read(
         ctx->_device,
         buffer ? buffer : ctx->_buffer,
-        bps[block_number],
+        lba,
         ctx->sectors_per_block
     );
 }
@@ -167,15 +172,15 @@ void* ext2_read_block(ext2_context* ctx, ext2_inode* inode, uint64_t block_numbe
         uint32_t relative_block = block_number - DIRECT_BLOCKS_COUNT;
 
         // case 1: singly indirect block
-        if (block_number < SINGLY_INDIRECT_BLOCKS_COUNT) {
-            return read_indirect_block(ctx, inode->singly_indirect_bp, relative_block, buffer);
+        if (relative_block < SINGLY_INDIRECT_BLOCKS_COUNT) {
+            return read_indirect_block(ctx, load_indirect_block(ctx, inode->singly_indirect_bp), relative_block, buffer);
         }
 
         relative_block -= SINGLY_INDIRECT_BLOCKS_COUNT;
 
         // case 2: doubly indirect block
-        if (block_number < DOUBLY_INDIRECT_BLOCKS_COUNT) {
-            void* level1 = read_indirect_block(ctx, inode->doubly_indirect_bp, relative_block / SINGLY_INDIRECT_BLOCKS_COUNT, NULL);
+        if (relative_block < DOUBLY_INDIRECT_BLOCKS_COUNT) {
+            void* level1 = read_indirect_block(ctx, load_indirect_block(ctx, inode->doubly_indirect_bp), relative_block / SINGLY_INDIRECT_BLOCKS_COUNT, NULL);
             if (!level1) return NULL;
             return read_indirect_block(ctx, level1, relative_block % SINGLY_INDIRECT_BLOCKS_COUNT, buffer);
         }
@@ -183,8 +188,8 @@ void* ext2_read_block(ext2_context* ctx, ext2_inode* inode, uint64_t block_numbe
         relative_block -= DOUBLY_INDIRECT_BLOCKS_COUNT;
 
         // case 3: triply indirect block
-        if (block_number < TRIPLY_INDIRECT_BLOCKS_COUNT) {
-            void* level1 = read_indirect_block(ctx, inode->triply_indirect_bp, relative_block / DOUBLY_INDIRECT_BLOCKS_COUNT, NULL);
+        if (relative_block < TRIPLY_INDIRECT_BLOCKS_COUNT) {
+            void* level1 = read_indirect_block(ctx, load_indirect_block(ctx, inode->triply_indirect_bp), relative_block / DOUBLY_INDIRECT_BLOCKS_COUNT, NULL);
             if (!level1) return NULL;
             relative_block = relative_block % DOUBLY_INDIRECT_BLOCKS_COUNT;
             void* level2 = read_indirect_block(ctx, level1, relative_block / SINGLY_INDIRECT_BLOCKS_COUNT, NULL);

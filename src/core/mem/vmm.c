@@ -135,14 +135,19 @@ ERROR_CODE um_map(void* vaddr, void* paddr) {
 }
 
 
-void direct_map_1gb() {
-    void* vstart_addr = (uint8_t*)RAM_DIRECT_MAPPING_OFFSET;
+void direct_map_gigabytes(uint16_t count) {
+    const uint64_t GIGABYTE = 1024 * 1024 * 1024;
+    
+    uint8_t* vstart_addr = (uint8_t*)RAM_DIRECT_MAPPING_OFFSET;
 
-    pte_t* pml4_entry = pte_get_index(_root_table, offset_to_index(vstart_addr, PTABLE_LVL_PML4));
-    pte_t* pdpt = pt_get_or_allocate_into(pml4_entry);
-    pte_t* pdpt_entry = pte_get_index(pdpt, offset_to_index(vstart_addr, PTABLE_LVL_PDPT));
-    (*pdpt_entry) = DEFAULT_HUGE_PTE;
-    assign_address(pdpt_entry, 0x0);
+    for (uint16_t i = 0; i < count; i++, vstart_addr += GIGABYTE)
+    {
+        pte_t* pml4_entry = pte_get_index(_root_table, offset_to_index(vstart_addr, PTABLE_LVL_PML4));
+        pte_t* pdpt = pt_get_or_allocate_into(pml4_entry);
+        pte_t* pdpt_entry = pte_get_index(pdpt, offset_to_index(vstart_addr, PTABLE_LVL_PDPT));
+        (*pdpt_entry) = DEFAULT_HUGE_PTE;
+        assign_address(pdpt_entry, GIGABYTE * i);
+    }
 }
 
 void direct_map_kernel() {
@@ -182,12 +187,11 @@ void* map_mmio_region(void* phys_start, void* phys_end) {
     return vaddr;
 }
 
-// creates new tables and maps first 2MB of memory to higher half kernel space
 ERROR_CODE init_vmem() {
     _root_table = (pte_t*)pmm_alloc();
     memset((void*)_root_table, 0, PAGE_SIZE);
 
-    direct_map_1gb();
+    direct_map_gigabytes(8);
     direct_map_kernel();
     
     pmm_load_root_ptable(_root_table);

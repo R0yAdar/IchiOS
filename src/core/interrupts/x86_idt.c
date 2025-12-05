@@ -17,8 +17,8 @@ void syscall(uint64_t id, void* ptr)
 void general_exception_handler(uint64_t exception_no, void* ptr) {
     vga_text_input input;
 
-    input.x = 7;
-    input.y = 7;
+    input.x = 10;
+    input.y = 0;
 
     input.text = exception_messages[exception_no];
 
@@ -37,7 +37,7 @@ void sysCallC(uint64_t syscall_no, void* ptr) {
 
     input.text = msg;
 
-    input.color = 0x19;
+    input.color = 0x38;
 
     vga_put(&input);
 }

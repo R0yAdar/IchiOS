@@ -26,7 +26,7 @@ load_disk_sectors:
 	; the stage2+kernel are right after - starting from 0x7e00
 	;sub eax, 0x7e00
 	;shr eax, 9
-	mov eax, 100
+	mov eax, 124
 	mov [dap_sectors_num], ax
 	mov [sectors_load_count], ax
 
