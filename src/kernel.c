@@ -215,27 +215,50 @@ void _rest_of_start() {
 
 	fclose(f);
 
-	qemu_log("hi!!");
-	printxln(vbe_mode_info.framebuffer);
-	printxln(HIGHER_HALF_KERNEL_OFFSET);
-	void* framebuf = vphys_address(vbe_mode_info.framebuffer);
+	qemu_log_int(vbe_mode_info.height);
 	qemu_log_int(vbe_mode_info.width);
-	qemu_log_int(framebuf);
+	qemu_log("Logging bpp");
+	qemu_log_int(vbe_mode_info.bpp);
 
-	if (!framebuf) {
+	qemu_log("Memory model");
+	qemu_log_int(vbe_mode_info.memory_model);
+
+	framebuffer* fb = framebuffer_init(
+		vphys_address(vbe_mode_info.framebuffer), 
+		vbe_mode_info.width, 
+		vbe_mode_info.height, 
+		vbe_mode_info.pitch, 
+		vbe_mode_info.bpp, 
+		vbe_mode_info.memory_model
+	);
+
+	if (!fb) {
 		qemu_log("failed to get framebuffer");
-		return;
-	}
+	} else {
 
-	for (size_t i = 0; i < 10000; i++)
+	for (size_t x = 0; x < fb->width; x++)
 	{
-		((uint32_t*)framebuf)[i] = 0x10293;
+		for (size_t y = 0; y < fb->height; y++)
+		{
+			// RRRRRGGGGGBBBBB
+
+			if (x < fb->width / 3) {
+				// R (F8)
+				framebuffer_put_pixel(fb, x, y, 0xF800);
+			}
+			else if (x < fb->width / 3 * 2) {
+				// G (7C)
+				framebuffer_put_pixel(fb, x, y, 0x07C0);
+			} else {
+				// B (1F)
+				framebuffer_put_pixel(fb, x, y, 0x001F);
+			}
+		}
 	}
+	
 
 	qemu_log("tried to draw something");
-	
-	
-
+	}
 	qemu_log(data);
 	syscall(0, 0);
 	

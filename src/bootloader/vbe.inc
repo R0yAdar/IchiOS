@@ -85,11 +85,30 @@ VbeInit:
   pop es
   mov di, VesaModeInfoBlockBuffer
   mov bx, [VesaInfoBlockBuffer + VesaInfoBlock.VideoModesOffset]
+  sub bx, 2
+
+  get_next_mode:
+  add bx, 2
   mov cx, [bx]
+  
   cmp cx, 0xffff
   je .NoModes
-
+  
+  push bx
   call get_vesa_mode_info
+  pop bx
+
+  jc .NoModes
+
+  cmp byte [VesaModeInfoBlockBuffer + VesaModeInfoBlock.MemoryModel], 6
+  jne get_next_mode
+
+  cmp byte [VesaModeInfoBlockBuffer + VesaModeInfoBlock.BitsPerPixel], 15
+  jne get_next_mode
+
+  cmp word [VesaModeInfoBlockBuffer + VesaModeInfoBlock.Width], 800
+  jne get_next_mode
+
   cmp dword [VesaModeInfoBlockBuffer + VesaModeInfoBlock.LFBAddress], 0
   je .NoModes
 
@@ -104,8 +123,8 @@ VbeInit:
   jmp .Finished
 
   .NoModes:
-  jmp $
-
+  stc
+  
   .Finished:
 
   popa

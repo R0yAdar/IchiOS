@@ -63,6 +63,16 @@ mov dword [multiboot_info.vbe_mode_info], vbe_mode_info
 
 call VbeInit
 
+jnc setup_vbe_mode_successfully
+
+mov bx, failed_vbe_mode_msg
+call print_string
+
+jmp $
+
+setup_vbe_mode_successfully:
+
+
 ; set protected mode
 
 mov eax, cr0
@@ -302,6 +312,7 @@ stage2_protected_msg: db "Hello from protected mode!", 13, 10, 0
 a20_msg: db "Enabled A20 line!", 13, 10, 0
 long_mode_msg: db "Ichi jumps to long mode", 13, 10, 0
 comp_mode_msg: db "Ichi entered 64 bit compatability mode", 0
+failed_vbe_mode_msg: db "Failed to setup vbe mode", 0
 
 section .bss
 align 16
