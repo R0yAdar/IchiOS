@@ -15,6 +15,8 @@ framebuffer* framebuffer_init(uint8_t* fb, uint32_t width, uint32_t height, uint
 
 void framebuffer_put_pixel(framebuffer* fb, uint32_t x, uint32_t y, uint16_t color);
 
+void framebuffer_draw_char8x8(framebuffer* fb, uint32_t x, uint32_t y, char c, uint16_t color, uint8_t scale);
+
 void framebuffer_clear(framebuffer* fb);
 
 #endif

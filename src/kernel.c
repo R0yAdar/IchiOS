@@ -223,6 +223,8 @@ void _rest_of_start() {
 	qemu_log("Memory model");
 	qemu_log_int(vbe_mode_info.memory_model);
 
+	qemu_log(data);
+
 	framebuffer* fb = framebuffer_init(
 		vphys_address(vbe_mode_info.framebuffer), 
 		vbe_mode_info.width, 
@@ -235,31 +237,43 @@ void _rest_of_start() {
 	if (!fb) {
 		qemu_log("failed to get framebuffer");
 	} else {
-
-	for (size_t x = 0; x < fb->width; x++)
-	{
-		for (size_t y = 0; y < fb->height; y++)
+		for (size_t x = 0; x < fb->width; x++)
 		{
-			// RRRRRGGGGGBBBBB
+			for (size_t y = 0; y < fb->height; y++)
+			{
+				// RRRRRGGGGGBBBBB
 
-			if (x < fb->width / 3) {
-				// R (F8)
-				framebuffer_put_pixel(fb, x, y, 0xF800);
-			}
-			else if (x < fb->width / 3 * 2) {
-				// G (7C)
-				framebuffer_put_pixel(fb, x, y, 0x07C0);
-			} else {
-				// B (1F)
-				framebuffer_put_pixel(fb, x, y, 0x001F);
+				if (x < fb->width / 3) {
+					// R (F8)
+					framebuffer_put_pixel(fb, x, y, 0xF800);
+				}
+				else if (x < fb->width / 3 * 2) {
+					// G (7C)
+					framebuffer_put_pixel(fb, x, y, 0x07C0);
+				} else {
+					// B (1F)
+					framebuffer_put_pixel(fb, x, y, 0x001F);
+				}
 			}
 		}
-	}
-	
 
-	qemu_log("tried to draw something");
+		framebuffer_draw_char8x8(fb, 0, 0, 'H', 0x100, 2);
+		framebuffer_draw_char8x8(fb, 16, 0, 'E', 0x100, 2);
+		framebuffer_draw_char8x8(fb, 32, 0, 'L', 0x100, 2);
+		framebuffer_draw_char8x8(fb, 48, 0, 'L', 0x100, 2);
+		framebuffer_draw_char8x8(fb, 64, 0, 'O', 0x100, 2);
+		framebuffer_draw_char8x8(fb, 80, 0, ' ', 0x100, 2);
+		framebuffer_draw_char8x8(fb, 96, 0, 'W', 0x100, 2);
+		framebuffer_draw_char8x8(fb, 112, 0, 'O', 0x100, 2);
+		framebuffer_draw_char8x8(fb, 128, 0, 'R', 0x100, 2);
+		framebuffer_draw_char8x8(fb, 144, 0, 'L', 0x100, 2);
+		framebuffer_draw_char8x8(fb, 160, 0, 'D', 0x100, 2);
+		framebuffer_draw_char8x8(fb, 176, 0, '!', 0x100, 2);
+		
+
+		qemu_log("tried to draw something");
 	}
-	qemu_log(data);
+
 	syscall(0, 0);
 	
 	while(1) { hlt(); } // if we return to bootloader - we'll double fault
