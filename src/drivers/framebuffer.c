@@ -45,6 +45,6 @@ void framebuffer_draw_char8x8(framebuffer* fb, uint32_t x, uint32_t y, char c, u
 
 void framebuffer_clear(framebuffer* fb) {
     for (size_t i = 0; i < fb->pitch * fb->height; i++) {
-        ((uint32_t*)fb->fb)[i] = 0;
+        ((uint8_t*)fb->fb)[i] = 0;
     }
 }

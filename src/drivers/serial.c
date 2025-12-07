@@ -1,6 +1,7 @@
 #include "serial.h"
 #include "assembly.h"
 #include "str.h"
+#include "valist.h"
 
 
 int serial_received() {
@@ -19,6 +20,20 @@ int is_transmit_empty() {
 void write_serial(char c) {
    while (is_transmit_empty() == 0);
    port_outb(PORT_COM1_DATA, c);
+}
+
+
+void qemu_logf(const char* format, ...) {
+    va_list args;
+    va_start(args, format);
+
+    char buffer[1024];
+
+    vsprintf(buffer, format, args);
+
+    qemu_log(buffer);
+
+    va_end(args);
 }
 
 void qemu_log(const char* str) {

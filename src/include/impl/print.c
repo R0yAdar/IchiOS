@@ -6,7 +6,6 @@ long long row = 0;
 long long position = 0;
 char color = 0x09;
 
-
 void print(const char* text) {
     vga_text_input input = {position, row, text, color};
     vga_put(&input);

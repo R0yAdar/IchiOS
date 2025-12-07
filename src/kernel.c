@@ -210,20 +210,18 @@ void _rest_of_start() {
 
 	size_t read_len = fread(data, 1, 1024, f);
 
-	qemu_log("Read file from main");
-	qemu_log_int(read_len);
+	qemu_logf("Read file from main: %d bytes", read_len);
+
+	qemu_log(data);
 
 	fclose(f);
 
-	qemu_log_int(vbe_mode_info.height);
-	qemu_log_int(vbe_mode_info.width);
-	qemu_log("Logging bpp");
-	qemu_log_int(vbe_mode_info.bpp);
+	qemu_logf("Screen %dx%d", vbe_mode_info.height, vbe_mode_info.width);
 
-	qemu_log("Memory model");
-	qemu_log_int(vbe_mode_info.memory_model);
+	qemu_logf("Logging bpp: %d", vbe_mode_info.bpp);
 
-	qemu_log(data);
+	qemu_logf("Memory model: %d", vbe_mode_info.memory_model);
+
 
 	framebuffer* fb = framebuffer_init(
 		vphys_address(vbe_mode_info.framebuffer), 
@@ -233,44 +231,25 @@ void _rest_of_start() {
 		vbe_mode_info.bpp, 
 		vbe_mode_info.memory_model
 	);
-
+	
 	if (!fb) {
 		qemu_log("failed to get framebuffer");
 	} else {
-		for (size_t x = 0; x < fb->width; x++)
-		{
-			for (size_t y = 0; y < fb->height; y++)
-			{
-				// RRRRRGGGGGBBBBB
+		framebuffer_clear(fb);
 
-				if (x < fb->width / 3) {
-					// R (F8)
-					framebuffer_put_pixel(fb, x, y, 0xF800);
-				}
-				else if (x < fb->width / 3 * 2) {
-					// G (7C)
-					framebuffer_put_pixel(fb, x, y, 0x07C0);
-				} else {
-					// B (1F)
-					framebuffer_put_pixel(fb, x, y, 0x001F);
-				}
-			}
-		}
-
-		framebuffer_draw_char8x8(fb, 0, 0, 'H', 0x100, 2);
-		framebuffer_draw_char8x8(fb, 16, 0, 'E', 0x100, 2);
-		framebuffer_draw_char8x8(fb, 32, 0, 'L', 0x100, 2);
-		framebuffer_draw_char8x8(fb, 48, 0, 'L', 0x100, 2);
-		framebuffer_draw_char8x8(fb, 64, 0, 'O', 0x100, 2);
-		framebuffer_draw_char8x8(fb, 80, 0, ' ', 0x100, 2);
-		framebuffer_draw_char8x8(fb, 96, 0, 'W', 0x100, 2);
-		framebuffer_draw_char8x8(fb, 112, 0, 'O', 0x100, 2);
-		framebuffer_draw_char8x8(fb, 128, 0, 'R', 0x100, 2);
-		framebuffer_draw_char8x8(fb, 144, 0, 'L', 0x100, 2);
-		framebuffer_draw_char8x8(fb, 160, 0, 'D', 0x100, 2);
-		framebuffer_draw_char8x8(fb, 176, 0, '!', 0x100, 2);
+		framebuffer_draw_char8x8(fb, 0, 0, 'H', 0xF800, 2);
+		framebuffer_draw_char8x8(fb, 16, 0, 'E', 0x07C0, 2);
+		framebuffer_draw_char8x8(fb, 32, 0, 'L', 0x001F, 2);
+		framebuffer_draw_char8x8(fb, 48, 0, 'L', 0xF800, 2);
+		framebuffer_draw_char8x8(fb, 64, 0, 'O', 0x07C0, 2);
+		framebuffer_draw_char8x8(fb, 80, 0, ' ', 0x001F, 2);
+		framebuffer_draw_char8x8(fb, 96, 0, 'W', 0xF800, 2);
+		framebuffer_draw_char8x8(fb, 112, 0, 'O', 0x07C0, 2);
+		framebuffer_draw_char8x8(fb, 128, 0, 'R', 0x001F, 2);
+		framebuffer_draw_char8x8(fb, 144, 0, 'L', 0xF800, 2);
+		framebuffer_draw_char8x8(fb, 160, 0, 'D', 0x07C0, 2);
+		framebuffer_draw_char8x8(fb, 176, 0, '!', 0x001F, 2);
 		
-
 		qemu_log("tried to draw something");
 	}
 
