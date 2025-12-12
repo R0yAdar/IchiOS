@@ -131,4 +131,4 @@ define_irq_handler isr32_handler, pit_irq_handler
 define_irq_handler isr33_handler, kybrd_irq_handler
 
 ; Custom ISRs
-define_isr_handler isr80_handler, sysCallC
+define_isr_handler isr80_handler, syscall_handler

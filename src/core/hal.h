@@ -80,21 +80,31 @@ typedef struct {
 } tss;
 
 typedef struct {
-    uint16_t limit_low;       // Bits 0–15 of the TSS size
-    uint16_t base_low;        // Bits 0–15 of TSS base address
-    uint8_t  base_mid;        // Bits 16–23 of base
-    uint8_t  type;            // Type = 0x89 for 64-bit available TSS
-    uint8_t  limit_high : 4;  // Bits 16–19 of limit
-    uint8_t  flags      : 4;  // Flags (G, AVL) = 0
-    uint8_t  base_high;       // Bits 24–31 of base
-    uint32_t base_upper;      // Bits 32–63 of base
-    uint32_t reserved;        // Set to 0
+    uint16_t limit_low;
+    uint16_t base_low;
+    uint8_t  base_mid;
+    
+    uint8_t  type : 4;
+    uint8_t  s    : 1;
+    uint8_t  dpl  : 2;
+    uint8_t  p    : 1;
+    
+    uint8_t  limit_high : 4;
+    uint8_t  avl  : 1;
+    uint8_t  l    : 1;
+    uint8_t  db   : 1;
+    uint8_t  g    : 1;
+    
+    uint8_t  base_high;
+
+    uint32_t base_upper;
+    uint32_t reserved;
 } gdt_tss_descriptor;
 
 typedef struct
 {
     uint16_t offset_low16;
-    uint16_t segment_selector; // point to valid GDT segment
+    uint16_t segment_selector;
     
     uint8_t ist;
     uint8_t flags;
@@ -132,6 +142,8 @@ typedef struct {
 #define GDT_TSS_OFFSET (5 * sizeof(gdt_desc))
 
 idt_descriptor idt_create_descriptor(void* handler);
+
+idt_descriptor idt_create_userland_descriptor(void* handler);
  
 gdt_desc gdt_create_descriptor(uint32_t base, uint32_t limit, uint16_t flag);
 

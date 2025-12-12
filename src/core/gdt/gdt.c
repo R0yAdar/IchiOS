@@ -23,4 +23,6 @@ void init_gdt(void* tss, uint16_t tss_size) {
     extern void reloadSegments();
 
     reloadSegments();
+
+    asm volatile("ltr %%ax" :: "a"(0x28));
 }

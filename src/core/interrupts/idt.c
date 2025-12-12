@@ -1,45 +1,68 @@
 #include "stdint.h"
 #include "../hal.h"
-#include "x86_idt.h"
-#include "vga.h"
-#include "print.h"
+#include "idt.h"
+#include "pit.h"
 #include "assembly.h"
+#include "serial.h"
+
+char* exception_messages[] = {
+    // 0
+    "Division by Zero",
+    "Debug",
+    "Non-Maskable Interrupt",
+    "Breakpoint",
+    "Overflow",
+    "Out of Bounds",
+    "Invalid Opcode",
+    "No Coprocessor",
+
+    "Double Fault",
+    "Coprocessor Segment Overrun",
+    "Bat TSS",
+    "Segment not Present",
+    "Stack Fault",
+    "General Protection Fault",
+    "Page Fault",
+    "Unknown Interrupt",
+
+    "Coprocessor Fault",
+    "Alignment Check",
+    "Machine Check",
+    "Reserved",
+    "Reserved",
+    "Reserved",
+    "Reserved",
+    "Reserved",
+
+    "Reserved",
+    "Reserved",
+    "Reserved",
+    "Reserved",
+    "Reserved",
+    "Reserved",
+    "Reserved",
+    "Reserved" // 31
+};
 
 static idt_descriptor _idt[256];
 
 static idtr _idtr;
 
-void syscall(uint64_t id, void* ptr)
+void inline syscall(uint64_t id, void* ptr)
 {
     interrupt80(id, ptr);
 }
 
 void general_exception_handler(uint64_t exception_no, void* ptr) {
-    vga_text_input input;
-
-    input.x = 10;
-    input.y = 0;
-
-    input.text = exception_messages[exception_no];
-
-    input.color = 0x1;
-
-    vga_put(&input);
+    qemu_log(exception_messages[exception_no]);
 }
 
-void sysCallC(uint64_t syscall_no, void* ptr) {
-	const char msg[] = "DEFAULT INTERRUPT HANDLER!!";
-
-    vga_text_input input;
-
-    input.x = 10;
-    input.y = 10;
-
-    input.text = msg;
-
-    input.color = 0x38;
-
-    vga_put(&input);
+void syscall_handler(uint64_t syscall_no, void* ptr) {
+    if (syscall_no == 0) {
+        qemu_log("Hello from syscall_handler");
+    } else {
+        sleep(1000);
+    }
 }
 
 void i86_install_ir(uint8_t index, idt_descriptor descriptor){
@@ -88,7 +111,7 @@ int init_idt(){
     i86_install_ir(33, idt_create_descriptor(isr33_handler));
 
     for (int i = 34; i < 256; i++){
-        i86_install_ir(i, idt_create_descriptor(isr80_handler));
+        i86_install_ir(i, idt_create_userland_descriptor(isr80_handler));
     }
 
     load_idtr(_idtr);

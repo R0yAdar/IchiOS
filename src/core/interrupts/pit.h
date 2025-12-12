@@ -12,4 +12,6 @@
 
 void init_pit();
 
+void sleep(uint64_t ms);
+
 #endif

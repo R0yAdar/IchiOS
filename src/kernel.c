@@ -1,6 +1,6 @@
 #include "core/interrupts/idt.h"
-#include "core/interrupts/x86_pic.h"
-#include "core/interrupts/x86_pit.h"
+#include "core/interrupts/pic.h"
+#include "core/interrupts/pit.h"
 #include "ahci.h"
 #include "stdint.h"
 #include "vga.h"
@@ -129,6 +129,18 @@ void mount_root_fs() {
 	}
 }
 
+void jump_to_userland(uint64_t stack_addr, uint64_t code_addr)
+{
+    asm volatile(" \
+        push $0x23 \n\
+        push %0 \n\
+        push $0x202 \n\
+        push $0x1B \n\
+        push %1 \n\
+        iretq \n\
+        " :: "r"(stack_addr), "r"(code_addr));
+}
+
 void _start_kernel(multiboot_info* info) {
 	serial_init();
 	vga_clear_screen();
@@ -182,11 +194,6 @@ void _rest_of_start() {
 	print("Allocating umm: ");
 
 	printxln(p3);
-	size_t amount = allocate_umm(0, 4096 * 1);
-
-	print("Allocated: "); printx(amount); println(" for user-space");	
-	void* usermem = (void*)0;
-	(*(uint64_t*)usermem) = 0xDEADBEEF;
 
 	sti();
 
@@ -254,7 +261,33 @@ void _rest_of_start() {
 	}
 
 	syscall(0, 0);
+
+	size_t amount = allocate_umm(4096, 4096 * 1);
+
+	qemu_logf("Allocated: %d for user-space", amount);
+
+	volatile BOOL test = FALSE;
+
+	if (test) {	
+		loop_start:
+		while(1) { 
+			//uint64_t arg1 = 0;
+			//void* arg2 = NULL;
+    		asm volatile( "int $0x80" :: "a"(0), "c"(0) : "memory" );
+			asm volatile( "int $0x80" :: "a"(1), "c"(0) : "memory" );
+		} // sample code
+	}
+
+	void* usermem = (void*)4096;
+	for (size_t i = 0; i < 100; i++)
+	{
+		*((uint8_t*)usermem + i) = *((uint8_t*)&&loop_start + i);
+	}
 	
+	qemu_log("Jumping to usermode");
+	
+	jump_to_userland(7000, 4096);
+
 	while(1) { hlt(); } // if we return to bootloader - we'll double fault
 	qemu_log("Out of loop ?_?");
 }

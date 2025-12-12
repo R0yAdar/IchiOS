@@ -61,6 +61,8 @@ void* canonify(void* address) {
 pte_t* pt_allocate_into(pte_t* table_index_p) {
     pte_t entry = DEFAULT_PTE;
 
+    mark_user_space(&entry); // TODO: ...
+
     void* phys = pmm_alloc(); // TODO: check null
     pte_t* ptable = (pte_t*)((vphys_address(phys)));
 
@@ -123,11 +125,13 @@ ERROR_CODE um_map(void* vaddr, void* paddr) {
     if (entry == NULL) return FAILED;
 
     (*entry) = DEFAULT_PTE;
-    mark_user_space(entry);
-    assign_address(entry, paddr);
-    
-    print("Mapped: "); printx(vaddr); print(" --> "); printx(paddr); println("");
 
+    mark_user_space(entry);
+
+    assign_address(entry, paddr);
+
+    qemu_logf("Mapping %d ", *entry);
+    
     flush_tlb(vaddr);
     pmm_load_root_ptable(_root_table);
 
@@ -175,7 +179,7 @@ void* map_mmio_region(void* phys_start, void* phys_end) {
         if (entry == NULL) return NULL;
 
         (*entry) = DEFAULT_PTE;
-        mark_user_space(entry);
+        
         mark_non_cacheable(entry);
         assign_address(entry, phys_start);
         flush_tlb(current_vaddr);

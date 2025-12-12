@@ -1,4 +1,4 @@
-#include "x86_pic.h"
+#include "pic.h"
 #include "assembly.h"
 #include "stdint.h"
 

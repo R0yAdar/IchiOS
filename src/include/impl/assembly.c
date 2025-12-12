@@ -97,7 +97,7 @@ void load_idtr(idtr idtr) {
     );
 }
 
-void interrupt80(uint64_t arg1, void* arg2)
+void inline interrupt80(uint64_t arg1, void* arg2)
 {
     asm volatile( "int $0x80" :: "a"(arg1), "c"(arg2) : "memory" );
 }
