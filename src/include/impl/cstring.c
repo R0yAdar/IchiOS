@@ -10,8 +10,8 @@ void* memset(void* dest, uint8_t value, uint64_t count) {
 }
 
 int int_to_text(unsigned long long value, char* buffer){
-    char pos = 0;
-    char len;
+    uint8_t pos = 0;
+    uint8_t len;
 
     while (value > 0)
     {
@@ -35,6 +35,7 @@ int int_to_text(unsigned long long value, char* buffer){
     return len + 1;
 }
 
+// https://wiki.osdev.org/User:A22347/Printf
 int vsprintf(char* s, const char* format, va_list arg) {
     while (format[0] != '\0')
     {

@@ -2,12 +2,12 @@
 #include "cstring.h"
 #include "assembly.h"
 #include "print.h"
+#include "serial.h"
 
-typedef enum block_status_t {
-    BLOCK_STATUS_FREE = 0,
-    BLOCK_STATUS_USED = 1,
-    BLOCK_STATUS_8CHUNK_USED = 0xffffffff
-} block_status;
+#define BLOCK_STATUS_FREE 0
+#define BLOCK_STATUS_USED 1
+#define BLOCK_STATUS_8CHUNK_USED 0xff
+#define BLOCK_STATUS_CHUNK_USED 0xffffffff
 
 #define BITMAP_CELL_BIT_SIZE 32
 #define PAGE_SIZE 4096
@@ -26,7 +26,7 @@ uint32_t free_bit(uint32_t value, uint32_t index) {
 }
 
 int32_t find_first_free_bit(uint32_t value) {
-     for (int i = 0; i < sizeof(value) * 8; ++i) {
+     for (int i = 0; i < (int)sizeof(value) * 8; ++i) {
         if (!((value >> i) & 1)) { 
             return i;
         }
@@ -80,10 +80,10 @@ int pmm_init(pmm_context* context){
 
 void* pmm_alloc() {
     for(uint64_t i = 0; i < LENGTH(bitmap); ++i) {
-        if (bitmap[i] != BLOCK_STATUS_8CHUNK_USED) {
+        if (bitmap[i] != BLOCK_STATUS_CHUNK_USED) {
             int32_t free_bit_index = find_first_free_bit(bitmap[i]);
 
-            if (find_first_free_bit == -1) { return NULL; }
+            if (free_bit_index == -1) { return NULL; }
 
             bitmap[i] = set_bit(bitmap[i], free_bit_index);
             return (void*)((i * BITMAP_CELL_BIT_SIZE + free_bit_index) * PAGE_SIZE);
@@ -100,9 +100,10 @@ void pmm_free(void* block) {
 }
 
 void* pmm_alloc_blocks(uint32_t count) {
-    uint64_t index = find_first_free_bits(&bitmap, LENGTH(bitmap), count);
+    uint64_t index = find_first_free_bits(bitmap, LENGTH(bitmap), count);
 
-    if (index == -1) {
+    if (index == (uint64_t)-1) {
+        qemu_log("No free memory");
         return NULL;
     }
 

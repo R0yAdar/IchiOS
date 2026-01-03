@@ -34,6 +34,8 @@ ptable_index_t offset_to_index(void* address, PTABLE_LVL lvl) {
     case PTABLE_LVL_PTE:
         return (((uint64_t)address >> 12) & 0x1ff);
     }
+
+    return (ptable_index_t)-1;
 }
 
 void* vphys_address(void* phys) {
@@ -114,7 +116,7 @@ ERROR_CODE simple_map(void* vaddr, void* paddr) {
     (*entry) = DEFAULT_PTE;
     assign_address(entry, paddr);
 
-    flush_tlb(vaddr);
+    flush_tlb((uint64_t)vaddr);
     
     return SUCCESS;
 }
@@ -129,10 +131,8 @@ ERROR_CODE um_map(void* vaddr, void* paddr) {
     mark_user_space(entry);
 
     assign_address(entry, paddr);
-
-    qemu_logf("Mapping %d ", *entry);
     
-    flush_tlb(vaddr);
+    flush_tlb((uint64_t)vaddr);
     pmm_load_root_ptable(_root_table);
 
     return SUCCESS;
@@ -150,7 +150,7 @@ void direct_map_gigabytes(uint16_t count) {
         pte_t* pdpt = pt_get_or_allocate_into(pml4_entry);
         pte_t* pdpt_entry = pte_get_index(pdpt, offset_to_index(vstart_addr, PTABLE_LVL_PDPT));
         (*pdpt_entry) = DEFAULT_HUGE_PTE;
-        assign_address(pdpt_entry, GIGABYTE * i);
+        assign_address(pdpt_entry, (void*)(GIGABYTE * i));
     }
 }
 
@@ -168,11 +168,12 @@ void direct_map_kernel() {
 } 
 
 void* map_mmio_region(void* phys_start, void* phys_end) {
-    uint64_t offset = (uint64_t)phys_start - (uint64_t)ALIGN_4KB(phys_start);
+    phys_start = ALIGN_4KB(phys_start);
+    phys_end = ALIGN_4KB(phys_end);
     void* vaddr = (void*)(RAM_MMIO_MAPPING_OFFSET | (uint64_t)phys_start);
     void* current_vaddr = vaddr;
 
-    while (phys_start < (uint64_t)phys_end)
+    while ((uint64_t)phys_start < (uint64_t)phys_end)
     {
         pte_t* entry = init_mapping_entry(current_vaddr, phys_start);
 
@@ -182,7 +183,7 @@ void* map_mmio_region(void* phys_start, void* phys_end) {
         
         mark_non_cacheable(entry);
         assign_address(entry, phys_start);
-        flush_tlb(current_vaddr);
+        flush_tlb((uint64_t)current_vaddr);
         
         phys_start = (void*)((uint64_t)phys_start + PAGE_SIZE);
         current_vaddr = (void*)((uint64_t)current_vaddr + PAGE_SIZE);
@@ -205,15 +206,17 @@ ERROR_CODE init_vmem() {
     return SUCCESS;
 }
 
+/*
 void* vmem_lookup_paddress(void* virt) {
     // physical addresses are limited to 52
-    uint64_t non_canonical_address = ((uint64_t)virt) << 12;
-    pte_t* next_table = (pte_t*)vphys_address(pte_get_address(_root_table + (non_canonical_address & 0x1FF)));
+    //uint64_t non_canonical_address = ((uint64_t)virt) << 12;
+    //pte_t* next_table = (pte_t*)vphys_address(pte_get_address(_root_table + (non_canonical_address & 0x1FF)));
 }
+*/
 
 void* kpage_alloc(size_t page_count) {
     void* paddr = pmm_alloc_blocks(page_count);
-
+    
     if (paddr == NULL) return NULL;
     
     void* vaddr = (void*)(RAM_DIRECT_MAPPING_OFFSET | (uint64_t)paddr);
@@ -235,7 +238,7 @@ void* kpage_alloc_dma(size_t page_count, void** out_phys_address) {
 }
 
 void kpage_free_dma(size_t page_count, void* vaddr, void* phys) {
-    if (!phys || !vaddr) return NULL;
+    if (!phys || !vaddr) return;
     // you can verify that phys and vaddr match
 
     pmm_free_blocks(phys, page_count);
@@ -246,7 +249,7 @@ void kpage_free_dma(size_t page_count, void* vaddr, void* phys) {
 
 void kpage_free(void* vaddr, size_t page_count) {
     if (vaddr == NULL) return;
-    if ((uint64_t)vaddr & RAM_DIRECT_MAPPING_OFFSET != RAM_DIRECT_MAPPING_OFFSET) return;
+    if (((uint64_t)vaddr & RAM_DIRECT_MAPPING_OFFSET) != RAM_DIRECT_MAPPING_OFFSET) return;
 
     pmm_free_blocks((void*)((~RAM_DIRECT_MAPPING_OFFSET) & (uint64_t)vaddr), page_count);
 }
@@ -265,8 +268,6 @@ typedef struct
     uint8_t total_count;
     uint16_t compressed_length;
 } kmalloc_entry_metadata_t;
-
-typedef struct kmalloc_freelist_page;
 
 #define KMALLOC_FREELIST_PAGE_MAX_ADDR 500
 
@@ -288,7 +289,7 @@ uint32_t _km_compress_4kb_aligned_local_address(void* ptr) {
 }
 
 void* _km_decompress_4kb_aligned_local_address(uint32_t caddr) {
-    return ((((uint64_t)caddr) << 12) | RAM_DIRECT_MAPPING_OFFSET);
+    return (void*)((((uint64_t)caddr) << 12) | RAM_DIRECT_MAPPING_OFFSET);
 }
 
 uint16_t _kmalloc_fl_roundup_2power(uint16_t length) {
@@ -372,6 +373,8 @@ kmalloc_freelist_page_t* kmalloc_fl_page_create() {
     for (size_t i = 0; i < KMALLOC_FREELIST_PAGE_MAX_ADDR; i++) {
         p->addresses[i] = NULL;
     }
+
+    return p;
 }
 
 void _kmalloc_fl_add(uint16_t size, void* vaddr) {
@@ -493,7 +496,7 @@ void* kmalloc(size_t len) {
     len = _kmalloc_fl_roundup_2power(len);
 
     ke_set_block_length(&metadata, len);
-    uint8_t index = _kmalloc_fl_size_to_index(len);
+    //uint8_t index = _kmalloc_fl_size_to_index(len);
 
     void* addr = _kmalloc_fl_get(len);
 
@@ -502,7 +505,9 @@ void* kmalloc(size_t len) {
         return addr;
     }
 
-    void* page = kpage_alloc(1);    
+    void* page = kpage_alloc(1);
+
+    if(!page) return NULL;
 
     _kmalloc_setup_page_memory(page, &metadata);  
     
@@ -535,6 +540,20 @@ void kfree(void* vaddr) {
     USER SPACE
 */
 
+typedef struct
+{
+    void* vaddr;
+    void* paddr;
+    size_t size;
+} memory_chunk;
+
+
+struct userspace_context
+{
+    memory_chunk* mem_chunks;
+};
+
+
 // returns the length of allocated memory, expects 4kb aligned numbers
 size_t allocate_umm(uint64_t vaddr_start, size_t len) {
     vaddr_start = (uint64_t)ALIGN_4KB(vaddr_start);
@@ -544,7 +563,7 @@ size_t allocate_umm(uint64_t vaddr_start, size_t len) {
         return 0;
     }
 
-    for (size_t i = vaddr_start; i < vaddr_start + len; i += PAGE_SIZE)
+    for (uint64_t i = vaddr_start; i < vaddr_start + len; i += PAGE_SIZE)
     {
         void* phys = pmm_alloc();
         if (!phys) return i - vaddr_start;

@@ -239,7 +239,11 @@ void ext2_release(ext2_context* ctx) {
 
 BOOL ext2_open(ext2_context* ctx, uint32_t inode_nr, vnode* out) {
     ext2_inode* inode = (ext2_inode*)kmalloc(sizeof(ext2_inode));
+    if(!inode) return FALSE;
+    
     ext2_vnode_data* data = (ext2_vnode_data*)kmalloc(sizeof(ext2_vnode_data));
+    if(!data) return FALSE;
+
     data->inode = inode;
     data->position = 0;
 

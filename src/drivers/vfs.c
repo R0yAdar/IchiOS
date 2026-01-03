@@ -118,6 +118,7 @@ file* fopen(const char* path, file_access_mode mode) {
     out->vnode = node;
     out->mode = mode;
     out->mountpoint = mountpoint;
+    out->size = node->size;
     
     ++mountpoint->rc;
 

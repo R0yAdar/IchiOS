@@ -55,6 +55,10 @@ void inline syscall(uint64_t id, void* ptr)
 
 void general_exception_handler(uint64_t exception_no, void* ptr) {
     qemu_log(exception_messages[exception_no]);
+    while (1)
+    {
+        /* code */
+    }
 }
 
 void syscall_handler(uint64_t syscall_no, void* ptr) {

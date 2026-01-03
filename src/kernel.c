@@ -1,5 +1,6 @@
 #include "core/interrupts/idt.h"
 #include "core/interrupts/pic.h"
+#include "core/user/elf.h"
 #include "core/interrupts/pit.h"
 #include "ahci.h"
 #include "stdint.h"
@@ -18,6 +19,7 @@
 #include "serial.h"
 #include "ext2.h"
 #include "framebuffer.h"
+#include "cstring.h"
 
 #define ARRAY_SIZE(arr) ((int)sizeof(arr) / (int)sizeof((arr)[0]))
 #define KERNEL_STACK_SIZE 4
@@ -55,7 +57,7 @@ void __early_init_pmm(multiboot_info* info) {
 
 void __early_init_framebuffer(multiboot_info* info) {
 	qemu_log("Saving framebuffer info...");
-	vbe_mode_info_structure* mode_info = (vbe_mode_info_structure*)info->m_vbe_mode_info;
+	vbe_mode_info_structure* mode_info = (vbe_mode_info_structure*)(uint64_t)info->m_vbe_mode_info;
 	qemu_log_int(mode_info->framebuffer);
 	vbe_mode_info = *mode_info;
 }
@@ -70,28 +72,6 @@ void init_kernel_stack() {
 	_top_of_kernel_stack = stack_top;
 
 	switch_stack(stack_top, _rest_of_start);
-}
-
-void print_memory(multiboot_info* info) {
-	memory_region* regions = (memory_region*)info->m_mmap_addr;
-		
-	print("Memory LOW: "); printxln(info->m_memoryLo * 1024);
-	print("Memory HIGH: "); printxln(info->m_memoryHi * 64 * 1024);
-
-	for(int i =0; i < info->m_mmap_length; ++i) {
-		print("MEMORY REGION DETECTED FROM -> ");
-
-		printx(regions->address);
-		print("  SIZE:");
-		printx(regions->size);
-		print(" TYPE: ");
-		printiln(regions->type);
-
-		++regions;
-	}
-
-	print("kernel origin: "); printxln(&__kernel_origin);
-	print("kernel size on ram: "); printxln(&__bss_end - &__kernel_origin);
 }
 
 void key_callback(uint8_t scancode, BOOL pressed) {
@@ -179,22 +159,6 @@ void _rest_of_start() {
 	qemu_log("Ichi kernel reallocated stack...");
 	_tss = create_tss_segment(_top_of_kernel_stack);
 	init_gdt(&_tss, sizeof(tss));
-	//syscall(0, 0);
-
-	void* p1 = kmalloc(16);
-	printxln(p1);
-
-	
-	void* p2 = kmalloc(8);
-	kfree(p2);
-	printxln(p2);
-
-	void* p3 = kmalloc(8);
-
-	print("Allocating umm: ");
-
-	printxln(p3);
-
 	sti();
 
 	qemu_log("Set hardware interrupts (sti)");
@@ -231,7 +195,7 @@ void _rest_of_start() {
 
 
 	framebuffer* fb = framebuffer_init(
-		vphys_address(vbe_mode_info.framebuffer), 
+		vphys_address((void*)(uint64_t)vbe_mode_info.framebuffer), 
 		vbe_mode_info.width, 
 		vbe_mode_info.height, 
 		vbe_mode_info.pitch, 
@@ -266,13 +230,17 @@ void _rest_of_start() {
 
 	qemu_logf("Allocated: %d for user-space", amount);
 
+	file* exe = fopen("/files/example.elf", READ);
+
+	if (!exe) qemu_log("Failed to open exe file");
+	else elf_load(exe);	
+
+	/*
 	volatile BOOL test = FALSE;
 
 	if (test) {	
 		loop_start:
 		while(1) { 
-			//uint64_t arg1 = 0;
-			//void* arg2 = NULL;
     		asm volatile( "int $0x80" :: "a"(0), "c"(0) : "memory" );
 			asm volatile( "int $0x80" :: "a"(1), "c"(0) : "memory" );
 		} // sample code
@@ -283,10 +251,12 @@ void _rest_of_start() {
 	{
 		*((uint8_t*)usermem + i) = *((uint8_t*)&&loop_start + i);
 	}
-	
+
 	qemu_log("Jumping to usermode");
 	
 	jump_to_userland(7000, 4096);
+
+	*/
 
 	while(1) { hlt(); } // if we return to bootloader - we'll double fault
 	qemu_log("Out of loop ?_?");

@@ -3,7 +3,7 @@
 # Tools and flags
 NASM := nasm -f elf64
 CC := gcc
-CFLAGS := -std=gnu99 -ffreestanding -m64 -mno-red-zone -fno-builtin -nostdinc -Wall -Wextra -fno-pic -fno-pie -mcmodel=large
+CFLAGS := -std=gnu99 -ffreestanding -m64 -mno-red-zone -fno-builtin -nostdinc -Wall -Wextra -Werror -pedantic -fno-pic -fno-pie -mcmodel=large
 LDFLAGS := -nostdlib -no-pie
 # -mcmodel=large
 # Directory structure
@@ -27,6 +27,10 @@ OBJS := $(patsubst $(SRC_DIR)/%.c, $(BUILD_DIR)/%.c.o, $(C_SRCS)) \
 # Final image
 BOOT_IMAGE := $(BUILD_DIR)/boot_image
 
+# Define the programs build path relative to the main Makefile
+PROG_SRC_DIR   := programs
+PROG_BUILD_DIR := $(BUILD_DIR)/programs
+
 # Default target
 all: $(BOOT_IMAGE)
 
@@ -42,6 +46,10 @@ $(BUILD_DIR)/linked.elf: $(OBJS)
 # Convert ELF to flat binary
 $(BOOT_IMAGE): $(BUILD_DIR)/linked.elf
 	@mkdir -p $(dir $@)
+	
+	@mkdir -p $(PROG_BUILD_DIR)
+	$(MAKE) -C $(PROG_SRC_DIR) BUILD_DIR=$(abspath $(PROG_BUILD_DIR))
+
 	objcopy -O binary --only-section=.boot_sector --only-section=.boot_sign build/linked.elf build/boot_sector.bin
 	objcopy -O binary --only-section=.stage2 build/linked.elf build/stage2.bin
 	objcopy -O binary --only-section=.text --only-section=.data --only-section=.rodata build/linked.elf build/kernel.bin
@@ -52,6 +60,7 @@ $(BOOT_IMAGE): $(BUILD_DIR)/linked.elf
 	mkdir -p build/rootfs
 	mkdir -p build/rootfs/files
 	echo "<START OF FILE> \n hello world \n <END OF FILE>" > build/rootfs/files/readme.txt
+	mv build/programs/example.elf build/rootfs/files/example.elf
 
 	genext2fs -b 10240 -d build/rootfs build/fs.ext2
 

@@ -1,3 +1,6 @@
+#ifndef ERR_H
+#define ERR_H
+
 #include "stdint.h"
 
 typedef uint8_t ERROR_CODE;
@@ -6,4 +9,4 @@ typedef uint8_t ERROR_CODE;
 
 #define SUCCESS 1
 
-#define NULL 0
+#endif
