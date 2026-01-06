@@ -191,7 +191,7 @@ void _rest_of_start() {
 
 	qemu_logf("Logging bpp: %d", vbe_mode_info.bpp);
 
-	qemu_logf("Memory model: %d", vbe_mode_info.memory_model);
+	qemu_logf("Memory model: %d", vbe_mode_info.memory_model);	
 
 
 	framebuffer* fb = framebuffer_init(
@@ -234,29 +234,6 @@ void _rest_of_start() {
 
 	if (!exe) qemu_log("Failed to open exe file");
 	else elf_load(exe);	
-
-	/*
-	volatile BOOL test = FALSE;
-
-	if (test) {	
-		loop_start:
-		while(1) { 
-    		asm volatile( "int $0x80" :: "a"(0), "c"(0) : "memory" );
-			asm volatile( "int $0x80" :: "a"(1), "c"(0) : "memory" );
-		} // sample code
-	}
-
-	void* usermem = (void*)4096;
-	for (size_t i = 0; i < 100; i++)
-	{
-		*((uint8_t*)usermem + i) = *((uint8_t*)&&loop_start + i);
-	}
-
-	qemu_log("Jumping to usermode");
-	
-	jump_to_userland(7000, 4096);
-
-	*/
 
 	while(1) { hlt(); } // if we return to bootloader - we'll double fault
 	qemu_log("Out of loop ?_?");

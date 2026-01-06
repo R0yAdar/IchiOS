@@ -9,14 +9,16 @@ void* memset(void* dest, uint8_t value, uint64_t count) {
     return dest;
 }
 
-int int_to_text(unsigned long long value, char* buffer){
+int number_as_string(unsigned long long value, char* buffer, int base) {
     uint8_t pos = 0;
     uint8_t len;
 
     while (value > 0)
     {
-        buffer[pos++] = '0' + value % 10;
-        value /= 10;
+        char c = '0' + value % base;
+        if (c > '9') c += 'A' - '0' - 10;
+        buffer[pos++] = c;
+        value /= base;
     }
 
     if (pos == 0){
@@ -69,7 +71,14 @@ int vsprintf(char* s, const char* format, va_list arg) {
             else if (format[0] == 'd')
             {
                 int number = va_arg(arg, int);
-                s += int_to_text(number, s);
+                s += number_as_string(number, s, 10);
+
+                ++format;
+            }
+            else if (format[0] == 'x')
+            {
+                int number = va_arg(arg, int);
+                s += number_as_string(number, s, 16);
 
                 ++format;
             }

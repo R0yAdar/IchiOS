@@ -2,6 +2,7 @@
 #include "assembly.h"
 #include "str.h"
 #include "stdarg.h"
+#include "cstring.h"
 
 
 int serial_received() {
@@ -36,6 +37,25 @@ void qemu_logf(const char* format, ...) {
     va_end(args);
 }
 
+void qemu_dump(void* buffer, uint64_t size) {
+   char out_buffer[3];
+   out_buffer[2] = ' ';
+
+    for (uint64_t i = 0; i < size; i++)
+    {      
+      if (i != 0 && i % 16 == 0) write_serial('\n');
+      if (number_as_string(((uint8_t*)buffer)[i], out_buffer, 16) == 1) {
+         out_buffer[1] = out_buffer[0];
+         out_buffer[0] = '0';
+      };
+
+      write_serial(out_buffer[0]);
+      write_serial(out_buffer[1]);
+      write_serial(out_buffer[2]);
+    }
+    write_serial('\n');
+}
+
 void qemu_log(const char* str) {
     while (*str != '\0')
     {
@@ -43,7 +63,7 @@ void qemu_log(const char* str) {
         ++str;
     }
     
-    write_serial('\n');
+   write_serial('\n');
 }
 
 void qemu_log_int(uint64_t i)  {

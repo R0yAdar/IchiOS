@@ -48,7 +48,7 @@ static idt_descriptor _idt[256];
 
 static idtr _idtr;
 
-void inline syscall(uint64_t id, void* ptr)
+inline void syscall(uint64_t id, void* ptr)
 {
     interrupt80(id, ptr);
 }
@@ -59,13 +59,16 @@ void general_exception_handler(uint64_t exception_no, void* ptr) {
     {
         /* code */
     }
+    qemu_log(ptr);
 }
 
 void syscall_handler(uint64_t syscall_no, void* ptr) {
     if (syscall_no == 0) {
         qemu_log("Hello from syscall_handler");
-    } else {
+    } else if (syscall_no == 1) {
         sleep(1000);
+    } else if (syscall_no == 2) {
+        qemu_log(ptr);
     }
 }
 

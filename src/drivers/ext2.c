@@ -8,6 +8,7 @@
 #include "print.h"
 #include "math.h"
 #include "array.h"
+#include "cstring.h"
 #include "ext2.h"
 
 /// EXT2 FILESYSTEM INTERNAL STRUCTURES
@@ -318,17 +319,17 @@ uint64_t ext2_readfile(ext2_context* ctx, vnode* node, void* buffer, uint64_t le
     uint32_t end_block = (data->position + len) / ctx->block_size;
     uint64_t buf_pos = 0;
 
-    if (data->position % ctx->block_size != 0) {
-        uint8_t* block = (uint8_t*)ext2_read_block(ctx, data->inode, first_block, node->buffer);
-        buf_pos += copy(buffer, block, min(ctx->block_size - (data->position % ctx->block_size), len));
-    }
+    uint32_t first_block_offset = data->position % ctx->block_size;
+    
+    uint8_t* block = (uint8_t*)ext2_read_block(ctx, data->inode, first_block, node->buffer);
+    buf_pos += copy(block + first_block_offset, buffer, min(ctx->block_size - first_block_offset, len));
 
     for (uint32_t i = first_block + 1; i < end_block; i++) {
         uint8_t* block = (uint8_t*)ext2_read_block(ctx, data->inode, i, node->buffer);
         buf_pos += copy_to(block, buffer, buf_pos, ctx->block_size);
     }
 
-    if (first_block != end_block || (data->position % ctx->block_size == 0)) {
+    if (first_block != end_block) {
         uint8_t* block = (uint8_t*)ext2_read_block(ctx, data->inode, end_block, node->buffer);
         copy_to(block, buffer, buf_pos, len - buf_pos);
     }

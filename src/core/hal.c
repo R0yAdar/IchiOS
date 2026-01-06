@@ -1,6 +1,6 @@
 #include "hal.h"
 
-idt_descriptor _idt_create_descriptor(void* handler, uint8_t dpl) {
+idt_descriptor _idt_create_descriptor(void (*handler)(), uint8_t dpl) {
     const uint8_t type = 0xE;
 
     idt_descriptor desc;
@@ -22,11 +22,11 @@ idt_descriptor _idt_create_descriptor(void* handler, uint8_t dpl) {
     return desc;
 }
 
-idt_descriptor idt_create_descriptor(void* handler) {
+idt_descriptor idt_create_descriptor(void (*handler)()) {
     return _idt_create_descriptor(handler, 0);
 }
 
-idt_descriptor idt_create_userland_descriptor(void* handler) {
+idt_descriptor idt_create_userland_descriptor(void (*handler)()) {
     return _idt_create_descriptor(handler, 3);
 }
 

@@ -9,6 +9,8 @@
 
 void* memset(void* dest, uint8_t value, uint64_t count);
 
+int number_as_string(unsigned long long value, char* buffer, int base);
+
 int vsprintf(char* s, const char* format, va_list arg);
 
 #endif

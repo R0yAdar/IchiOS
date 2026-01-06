@@ -7,6 +7,8 @@ typedef struct {
     void* entry;
 } elf;
 
+#pragma pack (push, 1)
+
 typedef struct {
     uint8_t  ident[16]; uint16_t type; uint16_t machine; uint32_t ver;
     uint64_t entry; uint64_t phoff; uint64_t shoff; uint32_t flags;
@@ -18,11 +20,23 @@ typedef struct {
     uint64_t paddr; uint64_t filesz; uint64_t memsz; uint64_t align;
 } Phdr;
 
+#pragma pack (pop)
+
+uint8_t ELF_MAGIC[4] = { 0x7F, 0x45, 0x4C, 0x46 };
+
 void load_and_jump(void* elf_raw) {
     Ehdr* ehdr = (Ehdr*)elf_raw;
     Phdr* phdr = (Phdr*)((uint8_t*)elf_raw + ehdr->phoff);
 
+    if (ehdr->ident[0] != ELF_MAGIC[0] || ehdr->ident[1] != ELF_MAGIC[1] || ehdr->ident[2] != ELF_MAGIC[2] || ehdr->ident[3] != ELF_MAGIC[3]) {
+        qemu_log("ELF: Invalid magic");
+        return;
+    }
+
+    qemu_logf("Header count is %d", ehdr->phnum);
+
     for (int i = 0; i < ehdr->phnum; i++) {
+        qemu_logf("Processing program header %d", phdr[i].type);
         if (phdr[i].type == 1) { // PT_LOAD = 1
             // Copy data from the file buffer to the required Virtual Address
             unsigned char* dest = (unsigned char*)phdr[i].vaddr;
@@ -37,8 +51,8 @@ void load_and_jump(void* elf_raw) {
             for (uint64_t j = phdr[i].filesz; j < phdr[i].memsz; j++) dest[j] = 0;
         }
     }
+    qemu_logf("Jumping to program entry point %d", ehdr->entry);
 
-    // Jump to the entry point
     ((void (*)())ehdr->entry)();
 }
 
@@ -51,10 +65,47 @@ void elf_load(file* f) {
         return;
     }
 
-    if (!fread(buffer, 1, f->size, f)) {
-        qemu_log("ELF: Failed to read file");
+    size_t read = fread(buffer, 1, f->size, f);
+    if ((uint64_t)read != f->size) {
+        qemu_logf("ELF: Failed to read file (%d/%d)", read, f->size);
         return;
     }
+
+    qemu_log("Dumping ELF file");
+
+    qemu_dump(buffer, f->size);
     
     load_and_jump(buffer);
 }
+
+
+typedef struct {
+    uint16_t something;
+} elf_context;
+
+typedef enum {
+    ELF_NO_ERROR = 0,
+    ELF_INVALID_FILE,
+    ELF_INVALID_HEADER,
+    ELF_INVALID_PROGRAM_HEADER,
+    ELF_INVALID_SECTION_HEADER,
+    ELF_INVALID_SYMBOL_TABLE,
+    ELF_INVALID_STRING_TABLE,
+    ELF_UNKNOWN_ERROR
+} ELF_ERROR_CODE;
+
+/*
+elf_context* elf_init(void* elf_raw) {
+
+}
+
+uint64_t elf_compute_memory_requirements() {
+
+}
+
+ELF_ERROR_CODE elf_load(elf_context* ctx, void* target) {
+}
+
+void elf_destroy(elf_context* ctx) {
+}
+*/
