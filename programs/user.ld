@@ -4,7 +4,7 @@ ENTRY(_start)
 SECTIONS
 {
     /* Common base address for user programs */
-    . = 0x400000;
+    . = 0x40000;
 
     .text : {
         *(.text)

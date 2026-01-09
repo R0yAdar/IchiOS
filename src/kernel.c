@@ -109,18 +109,6 @@ void mount_root_fs() {
 	}
 }
 
-void jump_to_userland(uint64_t stack_addr, uint64_t code_addr)
-{
-    asm volatile(" \
-        push $0x23 \n\
-        push %0 \n\
-        push $0x202 \n\
-        push $0x1B \n\
-        push %1 \n\
-        iretq \n\
-        " :: "r"(stack_addr), "r"(code_addr));
-}
-
 void _start_kernel(multiboot_info* info) {
 	serial_init();
 	vga_clear_screen();
@@ -223,13 +211,7 @@ void _rest_of_start() {
 		
 		qemu_log("tried to draw something");
 	}
-
-	syscall(0, 0);
-
-	size_t amount = allocate_umm(4096, 4096 * 1);
-
-	qemu_logf("Allocated: %d for user-space", amount);
-
+	
 	file* exe = fopen("/files/example.elf", READ);
 
 	if (!exe) qemu_log("Failed to open exe file");

@@ -54,10 +54,21 @@ inline void syscall(uint64_t id, void* ptr)
 }
 
 void general_exception_handler(uint64_t exception_no, void* ptr) {
-    qemu_log(exception_messages[exception_no]);
+    uint64_t faulting_address;
+
+    // Reading CR2 register into the faulting_address variable
+    __asm__ volatile (
+        "mov %%cr2, %0"
+        : "=r" (faulting_address) // Output: %0
+        :                         // No Inputs
+        :                         // No Clobbers
+    );
+
+    qemu_logf("%s CR2: %x", exception_messages[exception_no], faulting_address);
+
     while (1)
     {
-        /* code */
+        hlt();
     }
     qemu_log(ptr);
 }

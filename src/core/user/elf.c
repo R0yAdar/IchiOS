@@ -1,6 +1,7 @@
 #include "elf.h"
 #include "vmm.h"
 #include "serial.h"
+#include "assembly.h"
 
 typedef struct {
     void* data;
@@ -42,7 +43,8 @@ void load_and_jump(void* elf_raw) {
             unsigned char* dest = (unsigned char*)phdr[i].vaddr;
             unsigned char* src  = (unsigned char*)elf_raw + phdr[i].offset;
 
-            qemu_logf("Copying %d bytes from %d to %d", phdr[i].filesz, src, dest);
+            qemu_logf("Copying %d bytes from %x to %x", phdr[i].filesz, src, dest);
+            
             allocate_umm((uint64_t)dest, 4096);
             
             for (uint64_t j = 0; j < phdr[i].filesz; j++) dest[j] = src[j];
@@ -51,9 +53,21 @@ void load_and_jump(void* elf_raw) {
             for (uint64_t j = phdr[i].filesz; j < phdr[i].memsz; j++) dest[j] = 0;
         }
     }
-    qemu_logf("Jumping to program entry point %d", ehdr->entry);
+    qemu_logf("Jumping to program entry point %x", ehdr->entry);
 
-    ((void (*)())ehdr->entry)();
+    cli();
+
+    uint64_t stack = 0x700000;
+
+    allocate_umm(stack, 4096 * 2);
+
+    qemu_log("===========START==========");
+    qemu_dump((void*)ehdr->entry, 200);
+    qemu_log("===========END==========");
+
+
+    qemu_log("Jumping to userland");
+    jump_to_userland(stack + 4096 + 2000, ehdr->entry);
 }
 
 void elf_load(file* f) {

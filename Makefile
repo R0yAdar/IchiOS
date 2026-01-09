@@ -5,12 +5,12 @@ NASM := nasm -f elf64
 CC := gcc
 CFLAGS := -std=gnu99 -ffreestanding -m64 -mno-red-zone -fno-builtin -nostdinc -Wall -Wextra -pedantic -fno-pic -fno-pie -mcmodel=large
 LDFLAGS := -nostdlib -no-pie
-# -mcmodel=large
+XLIBC := -L./build/xlibc -lxlibc
 # Directory structure
 SRC_DIR := src
 BUILD_DIR := build
 
-INCLUDE_DIRS := src/include src/drivers/include
+INCLUDE_DIRS := src/include src/drivers/include xlibc/src/include
 CFLAGS += $(addprefix -I,$(INCLUDE_DIRS))
 
 # Recursively gather source files
@@ -41,7 +41,7 @@ boot: $(BOOT_IMAGE)
 # Link object files into ELF
 $(BUILD_DIR)/linked.elf: $(OBJS)
 	@mkdir -p $(dir $@)
-	ld $(LDFLAGS) -T linker.ld -o $@ $^ 
+	ld $(LDFLAGS) -T linker.ld -o $@ $^ $(XLIBC)
 
 # Convert ELF to flat binary
 $(BOOT_IMAGE): $(BUILD_DIR)/linked.elf

@@ -113,3 +113,18 @@ void flush_tlb_all()
     asm volatile("mov %%cr3, %0" : "=r"(cr3));
     asm volatile("mov %0, %%cr3" :: "r"(cr3));
 }
+
+__attribute__((naked, noreturn))
+void jump_to_userland(uint64_t stack_addr, uint64_t code_addr)
+{
+    qemu_logf("Jumping to userland at %x, %x", stack_addr, code_addr);
+    
+    asm volatile(" \
+        push $0x23 \n\
+        push %0 \n\
+        push $0x202 \n\
+        push $0x1B \n\
+        push %1 \n\
+        iretq \n\
+        " :: "r"(stack_addr), "r"(code_addr));
+}
