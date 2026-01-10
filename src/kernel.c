@@ -212,6 +212,7 @@ void _rest_of_start() {
 		qemu_log("tried to draw something");
 	}
 	
+	
 	file* exe = fopen("/files/example.elf", READ);
 
 	if (!exe) qemu_log("Failed to open exe file");

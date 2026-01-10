@@ -18,10 +18,10 @@ uint32_t pci_read(uint8_t bus, uint8_t device, uint8_t function, uint8_t offset)
     return port_inl(PCI_CONFIG_DATA_PORT);
 }
 
-uint32_t pci_write(uint8_t bus, uint8_t device, uint8_t function, uint8_t offset, uint32_t value) {
+void pci_write(uint8_t bus, uint8_t device, uint8_t function, uint8_t offset, uint32_t value) {
     uint32_t address = pci_create_address(bus, device, function, offset);
     port_outl(PCI_CONFIG_ADDR_PORT, address);
-    return port_outl(PCI_CONFIG_DATA_PORT, value);
+    port_outl(PCI_CONFIG_DATA_PORT, value);
 }
 
 pci_device pci_get_device(uint16_t vendor, uint16_t device_id) {

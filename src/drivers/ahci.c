@@ -3,6 +3,7 @@
 #include "vmm.h"
 #include "print.h"
 #include "types.h"
+#include "cstring.h"
 
 pci_device _device;
 sata_device _sata0 = {0};

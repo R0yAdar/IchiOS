@@ -31,6 +31,10 @@ BOOT_IMAGE := $(BUILD_DIR)/boot_image
 PROG_SRC_DIR   := programs
 PROG_BUILD_DIR := $(BUILD_DIR)/programs
 
+# Define the xlibc build path relative to the main Makefile
+XLIBC_SRC_DIR   := xlibc
+XLIBC_BUILD_DIR := $(BUILD_DIR)/xlibc
+
 # Default target
 all: $(BOOT_IMAGE)
 
@@ -40,6 +44,7 @@ boot: $(BOOT_IMAGE)
 
 # Link object files into ELF
 $(BUILD_DIR)/linked.elf: $(OBJS)
+	$(MAKE) -C $(XLIBC_SRC_DIR) BUILD_DIR=$(abspath $(XLIBC_BUILD_DIR))
 	@mkdir -p $(dir $@)
 	ld $(LDFLAGS) -T linker.ld -o $@ $^ $(XLIBC)
 

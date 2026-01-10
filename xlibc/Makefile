@@ -13,7 +13,7 @@ CFLAGS += $(addprefix -I,$(INCLUDE_DIRS))
 SRCS      := $(wildcard $(SRC_DIR)/*.c)
 # This converts src/file.c into ../build/xlibc/file.o
 OBJS      := $(patsubst $(SRC_DIR)/%.c, $(BUILD_DIR)/%.o, $(SRCS))
-LIB       := $(BUILD_DIR)/xlibc.a
+LIB       := $(BUILD_DIR)/libxlibc.a
 
 .PHONY: all clean
 
