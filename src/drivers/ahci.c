@@ -1,35 +1,34 @@
 #include "pci.h"
 #include "ahci.h"
 #include "vmm.h"
-#include "print.h"
 #include "types.h"
 #include "cstring.h"
+#include "serial.h"
+
+#define FIS_BUFFER_SIZE 256
+#define CMD_LIST_BUFFER_SIZE 0x1000
+#define CMD_TABLE_ENTRY_SIZE 32
+#define CMD_TABLE_ENTRY_COUNT 8
+#define COMMAND_TABLE_SIZE (CMD_TABLE_ENTRY_SIZE * (CMD_TABLE_ENTRY_COUNT - 1) + sizeof(hba_cmd_tbl_t) + 16) // (alignment)
+#define SECTOR_SIZE 512
+#define MAX_PRDT_BYTE_COUNT (4 * 1024 * 1024) // 4MB per PRDT entry
 
 pci_device _device;
 sata_device _sata0 = {0};
 
-// Start command engine
 void start_cmd(hba_port_t *port)
 {
-	// Wait until CR (bit15) is cleared
-	while (port->cmd & HBA_PxCMD_CR)
-		;
+	while (port->cmd & HBA_PxCMD_CR);
 
-	// Set FRE (bit4) and ST (bit0)
 	port->cmd |= HBA_PxCMD_FRE;
 	port->cmd |= HBA_PxCMD_ST; 
 }
 
-// Stop command engine
 void stop_cmd(hba_port_t *port)
 {
-	// Clear ST (bit0)
 	port->cmd &= ~HBA_PxCMD_ST;
-
-	// Clear FRE (bit4)
 	port->cmd &= ~HBA_PxCMD_FRE;
 
-	// Wait until FR (bit14), CR (bit15) are cleared
 	while(1)
 	{
 		if (port->cmd & HBA_PxCMD_FR)
@@ -40,13 +39,6 @@ void stop_cmd(hba_port_t *port)
 	}
 
 }
-
-#define FIS_BUFFER_SIZE 256
-#define CMD_LIST_BUFFER_SIZE 0x1000
-#define CMD_TABLE_ENTRY_SIZE 32
-#define CMD_TABLE_ENTRY_COUNT 8
-#define COMMAND_TABLE_SIZE (CMD_TABLE_ENTRY_SIZE * (CMD_TABLE_ENTRY_COUNT - 1) + sizeof(hba_cmd_tbl_t) + 16) // (allignment)
-
 
 void port_rebase(hba_port_t *port)
 {
@@ -64,10 +56,10 @@ void port_rebase(hba_port_t *port)
 
 	stop_cmd(port);
 
-	port->clb = (uint32_t)pclb;
+	port->clb = (uint32_t)((uint64_t)pclb & 0xFFFFFFFF);
 	port->clbu = (uint32_t)((uint64_t)pclb >> 32);
 
-	port->fb = (uint32_t)pfb;
+	port->fb = (uint32_t)((uint64_t)pfb & 0xFFFFFFFF);
 	port->fbu = (uint32_t)((uint64_t)pfb >> 32);
 
 	hba_cmd_header_t* cmdheader = (hba_cmd_header_t*)(vclb);
@@ -98,49 +90,10 @@ BOOL is_64bit(volatile hba_mem_t* hba) {
 }
 
 void register_drive(hba_port_t* port) {
-	println("Registring SATA device");
+	qemu_log("Registring SATA device");
 	port_rebase(port);
 }
 
-void probe_port(hba_mem_t *abar)
-{
-	// Search disk in implemented ports
-	uint32_t pi = abar->pi;
-	int i = 0;
-	while (i<32)
-	{
-		if (pi & 1)
-		{
-			int dt = check_type(&abar->ports[i]);
-			if (dt == AHCI_DEV_SATA)
-			{
-				println("SATA drive found");
-                register_drive(&abar->ports[i]);
-			}
-			else if (dt == AHCI_DEV_SATAPI)
-			{
-				println("SATAPI drive found");
-			}
-			else if (dt == AHCI_DEV_SEMB)
-			{
-				println("SEMB drive found");
-			}
-			else if (dt == AHCI_DEV_PM)
-			{
-				println("PM drive found");
-			}
-			else
-			{
-				//println("No drive found");
-			}
-		}
-
-		pi >>= 1;
-		i ++;
-	}
-}
-
-// Check device type
 int check_type(hba_port_t *port)
 {
 	uint32_t ssts = port->ssts;
@@ -148,7 +101,7 @@ int check_type(hba_port_t *port)
 	uint8_t ipm = (ssts >> 8) & 0x0F;
 	uint8_t det = ssts & 0x0F;
 
-	if (det != HBA_PORT_DET_PRESENT)	// Check drive status
+	if (det != HBA_PORT_DET_PRESENT)
 		return AHCI_DEV_NULL;
 	if (ipm != HBA_PORT_IPM_ACTIVE)
 		return AHCI_DEV_NULL;
@@ -166,8 +119,51 @@ int check_type(hba_port_t *port)
 	}
 }
 
-#define SECTOR_SIZE 512
-#define MAX_PRDT_BYTE_COUNT (4 * 1024 * 1024) // 4MB per PRDT entry
+void probe_port(hba_mem_t *abar)
+{
+	uint32_t pi = abar->pi;
+	int i = 0;
+
+	while (i < 32)
+	{
+		if (pi & 1)
+		{
+			int dt = check_type(&abar->ports[i]);
+			if (dt == AHCI_DEV_SATA)
+			{
+				qemu_log("SATA drive found... registering...");
+                register_drive(&abar->ports[i]);
+			}
+			else if (dt == AHCI_DEV_SATAPI)
+			{
+				qemu_log("SATAPI drive found");
+			}
+			else if (dt == AHCI_DEV_SEMB)
+			{
+				qemu_log("SEMB drive found");
+			}
+			else if (dt == AHCI_DEV_PM)
+			{
+				qemu_log("PM drive found");
+			}
+		}
+
+		pi >>= 1;
+		i ++;
+	}
+}
+
+int find_cmdslot(hba_port_t *port)
+{
+	uint32_t slots = (port->sact | port->ci);
+	for (int i=0; i< 32; i++)
+	{
+		if ((slots&1) == 0)
+			return i;
+		slots >>= 1;
+	}
+	return -1;
+}
 
 BOOL ahci_action(uint64_t lba, uint32_t sector_count, void* phys_buffer, uint8_t command)
 {
@@ -176,8 +172,9 @@ BOOL ahci_action(uint64_t lba, uint32_t sector_count, void* phys_buffer, uint8_t
     volatile hba_port_t *port = _sata0.port;
 
     int slot = find_cmdslot(port);
+
     if (slot == -1) {
-        println("AHCI: no free command slot");
+        qemu_log("AHCI: no free command slot");
         return FALSE;
     }
 
@@ -193,10 +190,9 @@ BOOL ahci_action(uint64_t lba, uint32_t sector_count, void* phys_buffer, uint8_t
 		cmdheader[slot].w = 0;
 	}
 
-	uint64_t result = slot * COMMAND_TABLE_SIZE;
 	volatile hba_cmd_tbl_t *cmdtbl = (hba_cmd_tbl_t*)((uint64_t)_sata0.ctba_start + (slot * COMMAND_TABLE_SIZE));
 
-	memset(cmdtbl, 0, COMMAND_TABLE_SIZE);
+	memset((void*)cmdtbl, 0, COMMAND_TABLE_SIZE);
 
 	uint64_t buffer_pa = (uint64_t)phys_buffer;
 
@@ -247,7 +243,7 @@ BOOL ahci_action(uint64_t lba, uint32_t sector_count, void* phys_buffer, uint8_t
 
     while (1) {
         if (port->is & HBA_PxIS_TFES) {
-            println("AHCI: taskfile error (TFES)!");
+            qemu_log("AHCI: taskfile error (TFES)!");
             port->is = HBA_PxIS_TFES;
             return FALSE;
         }
@@ -258,23 +254,11 @@ BOOL ahci_action(uint64_t lba, uint32_t sector_count, void* phys_buffer, uint8_t
 
     if (port->is & HBA_PxIS_TFES)
 	{
-		println("AHCI: taskfile error (TFES)");
+		qemu_log("AHCI: taskfile error (TFES)");
 		return FALSE;
 	}
 	
     return TRUE;
-}
-
-int find_cmdslot(hba_port_t *port)
-{
-	uint32_t slots = (port->sact | port->ci);
-	for (int i=0; i< 32; i++)
-	{
-		if ((slots&1) == 0)
-			return i;
-		slots >>= 1;
-	}
-	return -1;
 }
 
 BOOL ahci_read(uint64_t lba, uint32_t sector_count, void* phys_buffer)
@@ -288,10 +272,8 @@ BOOL ahci_write(uint64_t lba, uint32_t sector_count, void* phys_buffer)
 }
 
 BOOL ahci_init() {
-    print("Size of hba: ");printi(sizeof(hba_mem_t)); print("  "); printiln(sizeof(hba_port_t));
     pci_device partial = pci_get_by_class(MASS_STORAGE, PCI_SATA_SUBCLASS, PCI_AHCI_PROGIF);
     _device = pci_get_device(partial.vendor_id, partial.device_id);
-	print("IRQ line is"); printiln(_device.irq);
 	
 	pci_enable_mmio(&_device);
 	pci_enable_mastering(&_device);
@@ -300,13 +282,19 @@ BOOL ahci_init() {
 	if (_device.device_id == 0) return FALSE;
     uint32_t mmio_base_address = _device.bar[5] & (~0xF);
 
-    volatile hba_mem_t* hba = (volatile hba_mem_t*)map_mmio_region((void*)mmio_base_address, (void*)((uint64_t)mmio_base_address + sizeof(hba_mem_t)));
+    volatile hba_mem_t* hba = (volatile hba_mem_t*)map_mmio_region(
+		(void*)((uint64_t)mmio_base_address), 
+		(void*)((uint64_t)mmio_base_address + sizeof(hba_mem_t))
+	);
     
     set_ahci_mode(hba);
 
-	if (is_64bit(hba)) {
-		println("ACHI supports 64bit!");
+	if (!is_64bit(hba)) {
+		qemu_log("ACHI doesn't support 64bit!");
+		return FALSE;
 	}
 
     probe_port(hba);
+
+	return TRUE;
 }

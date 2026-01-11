@@ -3,7 +3,7 @@
 # Tools and flags
 NASM := nasm -f elf64
 CC := gcc
-CFLAGS := -std=gnu99 -ffreestanding -m64 -mno-red-zone -fno-builtin -nostdinc -Wall -Wextra -pedantic -fno-pic -fno-pie -mcmodel=large
+CFLAGS := -std=gnu99 -ffreestanding -m64 -mno-red-zone -fno-builtin -nostdinc -Wall -Wextra -Werror -pedantic -fno-pic -fno-pie -mcmodel=large
 LDFLAGS := -nostdlib -no-pie
 XLIBC := -L./build/xlibc -lxlibc
 # Directory structure
