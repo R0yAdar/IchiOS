@@ -12,8 +12,6 @@
 #define BITMAP_CELL_BIT_SIZE 32
 #define PAGE_SIZE 4096
 
-// global static variables
-// Maximum of 512MB
 uint32_t bitmap[4096];
 pmm_context _context;
 
@@ -72,7 +70,6 @@ int pmm_init(pmm_context* context){
         }
     }
     
-    // reserve start of memory for kernel...
     memset(&bitmap, BLOCK_STATUS_8CHUNK_USED, ((context->kernel_ram_size + 4095) / 4096 + 7) / 8);
 
     return 0;

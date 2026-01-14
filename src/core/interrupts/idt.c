@@ -1,12 +1,11 @@
 #include "stdint.h"
-#include "../hal.h"
 #include "idt.h"
 #include "pit.h"
 #include "assembly.h"
 #include "serial.h"
+#include "../hal.h"
 
 char* exception_messages[] = {
-    // 0
     "Division by Zero",
     "Debug",
     "Non-Maskable Interrupt",
@@ -41,7 +40,7 @@ char* exception_messages[] = {
     "Reserved",
     "Reserved",
     "Reserved",
-    "Reserved" // 31
+    "Reserved"
 };
 
 static idt_descriptor _idt[256];
@@ -53,16 +52,12 @@ inline void syscall(uint64_t id, void* ptr)
     interrupt80(id, ptr);
 }
 
-void general_exception_handler(uint64_t exception_no, void* ptr) {
-    uint64_t faulting_address;
+void opaque_handler(uint64_t id, void* ptr) {
+    qemu_logf("Opaque handler called (id=%d, ptr=0x%x)!!!", id, ptr);
+}
 
-    // Reading CR2 register into the faulting_address variable
-    __asm__ volatile (
-        "mov %%cr2, %0"
-        : "=r" (faulting_address) // Output: %0
-        :                         // No Inputs
-        :                         // No Clobbers
-    );
+void general_exception_handler(uint64_t exception_no, void* ptr) {
+    uint64_t faulting_address = read_cr2();
 
     qemu_logf("%s CR2: %x", exception_messages[exception_no], faulting_address);
 
@@ -70,7 +65,7 @@ void general_exception_handler(uint64_t exception_no, void* ptr) {
     {
         hlt();
     }
-    qemu_log(ptr);
+    (void)ptr;
 }
 
 void syscall_handler(uint64_t syscall_no, void* ptr) {
@@ -88,7 +83,7 @@ void i86_install_ir(uint8_t index, idt_descriptor descriptor){
 }
 
 int init_idt(){
-    _idtr.limit = sizeof(idt_descriptor) * 256 -1;
+    _idtr.limit = sizeof(idt_descriptor) * 256 - 1;
     _idtr.base = (uint64_t)&_idt[0];
 
     i86_install_ir(0,  idt_create_descriptor(isr0_handler));
@@ -128,8 +123,14 @@ int init_idt(){
     i86_install_ir(32, idt_create_descriptor(isr32_handler));
     i86_install_ir(33, idt_create_descriptor(isr33_handler));
 
+    // Rest...
     for (int i = 34; i < 256; i++){
-        i86_install_ir(i, idt_create_userland_descriptor(isr80_handler));
+        if (i == 0x80) {
+            i86_install_ir(0x80, idt_create_userland_descriptor(isr80_handler));
+        }
+        else {
+            i86_install_ir(i, idt_create_descriptor(opaque_handler));
+        }
     }
 
     load_idtr(_idtr);

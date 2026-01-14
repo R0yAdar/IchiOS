@@ -3,10 +3,9 @@
 
 #include "stdint.h"
 
-typedef uint8_t ERROR_CODE;
-
-#define FAILED 0
-
-#define SUCCESS 1
+typedef enum {
+    FAILED = 0,
+    SUCCESS = 1,
+} ERROR_CODE;
 
 #endif

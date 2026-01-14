@@ -282,7 +282,8 @@ BOOL ahci_init() {
 	if (_device.device_id == 0) return FALSE;
     uint32_t mmio_base_address = _device.bar[5] & (~0xF);
 
-    volatile hba_mem_t* hba = (volatile hba_mem_t*)map_mmio_region(
+    volatile hba_mem_t* hba = (volatile hba_mem_t*)vmm_map_mmio_region(
+		vmm_get_global_context(),
 		(void*)((uint64_t)mmio_base_address), 
 		(void*)((uint64_t)mmio_base_address + sizeof(hba_mem_t))
 	);

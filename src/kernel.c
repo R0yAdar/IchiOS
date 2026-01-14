@@ -153,7 +153,11 @@ void _rest_of_start() {
 
 	ahci_init();
 
+	qemu_log("Initializing AHCI...");
+
 	mount_root_fs();
+
+	qemu_log("Mounting root fs...");
 
 	file* f = fopen("/files/readme.txt", READ);
 

@@ -3,9 +3,11 @@
 
 #define PIC1_COMMAND_PORT 0x20
 #define PIC1_DATA_PORT 0x21
+#define PIC1_IDT_OFFSET 0x20
 
 #define PIC2_COMMAND_PORT 0xA0
 #define PIC2_DATA_PORT 0xA1
+#define PIC2_IDT_OFFSET 0x28
 
 /* PIC1 Devices */
 #define PIC1_SYSTEM_TIMER 0x1

@@ -5,6 +5,12 @@
 #include "multiboot.h"
 
 #define HIGHER_HALF_KERNEL_OFFSET 0xffffffff80000000
+#define ENTRIES_PER_TABLE 512
+#define RAM_DIRECT_MAPPING_OFFSET 0xffff800000000000
+#define RAM_MMIO_MAPPING_OFFSET 0xffff900000000000
+#define ALIGN_4KB(ptr) ((void*)((uint64_t)(ptr) & (~0xFFF)))
+
+typedef struct pagetable_context pagetable_context;
 
 void* vphys_address(void* phys);
 
@@ -30,7 +36,9 @@ void* kmalloc(size_t len);
 
 void kfree(void* vaddr);
 
-void* map_mmio_region(void* phys_start, void* phys_end);
+void* vmm_map_mmio_region(pagetable_context* ctx, void* phys_start, void* phys_end);
+
+pagetable_context* vmm_get_global_context();
 
 size_t allocate_umm(uint64_t vaddr_start, size_t len);
 

@@ -79,7 +79,7 @@ void port_outb(uint16_t port, uint8_t data) {
                   : "a"(data), "Nd"(port));
 }
 
-port_outl(uint16_t port, uint32_t val) {
+void port_outl(uint16_t port, uint32_t val) {
     __asm__ volatile ("outl %0, %1" : : "a"(val), "Nd"(port));
 }
 
@@ -97,7 +97,7 @@ void load_idtr(idtr idtr) {
     );
 }
 
-void inline interrupt80(uint64_t arg1, void* arg2)
+void interrupt80(uint64_t arg1, void* arg2)
 {
     asm volatile( "int $0x80" :: "a"(arg1), "c"(arg2) : "memory" );
 }
@@ -117,8 +117,6 @@ void flush_tlb_all()
 __attribute__((naked, noreturn))
 void jump_to_userland(uint64_t stack_addr, uint64_t code_addr)
 {
-    qemu_logf("Jumping to userland at %x, %x", stack_addr, code_addr);
-    
     asm volatile(" \
         push $0x23 \n\
         push %0 \n\
@@ -127,4 +125,17 @@ void jump_to_userland(uint64_t stack_addr, uint64_t code_addr)
         push %1 \n\
         iretq \n\
         " :: "r"(stack_addr), "r"(code_addr));
+}
+
+uint64_t read_cr2() {
+    uint64_t cr2;
+
+    __asm__ volatile (
+        "mov %%cr2, %0"
+        : "=r" (cr2)
+        :
+        :
+    );
+
+    return cr2;
 }

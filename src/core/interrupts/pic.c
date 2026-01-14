@@ -1,24 +1,35 @@
-#include "pic.h"
 #include "assembly.h"
 #include "stdint.h"
+#include "pic.h"
 
-
-void remap_pic() {
-    // Restart PICs
+void restart_pics() {
     port_outb(PIC1_COMMAND_PORT, 0x11);
     port_outb(PIC2_COMMAND_PORT, 0x11);
+}
 
-    // Set new IDT offsets
-    port_outb(PIC1_DATA_PORT, 0x20); // 32...
-    port_outb(PIC2_DATA_PORT, 0x28); // 40...
+void relocate_idt_offsets() {
+    port_outb(PIC1_DATA_PORT, PIC1_IDT_OFFSET);
+    port_outb(PIC2_DATA_PORT, PIC2_IDT_OFFSET);
+}
 
-    // Setup cascading
+void setup_cascading() {
     port_outb(PIC1_DATA_PORT, 0x04);
     port_outb(PIC2_DATA_PORT, 0x02);
+}
 
-    // Finish
+void finish_pic_setup() {
     port_outb(PIC1_DATA_PORT, 0x01);
     port_outb(PIC2_DATA_PORT, 0x01);
+}
+
+void remap_pic() {
+    restart_pics();
+
+    relocate_idt_offsets();
+
+    setup_cascading();
+
+    finish_pic_setup(); 
 }
 
 void init_pic() {
@@ -27,6 +38,6 @@ void init_pic() {
     uint8_t pic1_enabled_irqs = PIC1_SYSTEM_TIMER | PIC1_KEYBOARD_CONTROLLER;
     port_outb(PIC1_DATA_PORT, (~pic1_enabled_irqs));
 
-    uint8_t pic2_enabled_irqs = 0;
+    uint8_t pic2_enabled_irqs = 0xFF;
     port_outb(PIC2_DATA_PORT, pic2_enabled_irqs);
 }

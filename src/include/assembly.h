@@ -49,4 +49,6 @@ void flush_tlb_all();
 
 void jump_to_userland(uint64_t stack_addr, uint64_t code_addr);
 
+uint64_t read_cr2();
+
 #endif

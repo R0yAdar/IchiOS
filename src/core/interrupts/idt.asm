@@ -132,3 +132,7 @@ define_irq_handler isr33_handler, kybrd_irq_handler
 
 ; Custom ISRs
 define_isr_handler isr80_handler, syscall_handler
+
+; Opaque
+
+define_isr_handler isr_opaque_handler, opaque_handler
