@@ -40,6 +40,10 @@ void* vmm_map_mmio_region(pagetable_context* ctx, void* phys_start, void* phys_e
 
 pagetable_context* vmm_get_global_context();
 
-size_t allocate_umm(uint64_t vaddr_start, size_t len);
+pagetable_context* vmm_create_userspace_context();
+
+size_t vmm_allocate_umm(pagetable_context* ctx, uint64_t vaddress, size_t len);
+
+void vmm_apply_pagetable(pagetable_context* ctx);
 
 #endif

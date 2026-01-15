@@ -12,7 +12,7 @@
 #define BITMAP_CELL_BIT_SIZE 32
 #define PAGE_SIZE 4096
 
-uint32_t bitmap[4096];
+uint32_t bitmap[512];
 pmm_context _context;
 
 uint32_t set_bit(uint32_t value, uint32_t index) {
@@ -55,7 +55,6 @@ uint64_t find_first_free_bits(uint32_t* values, uint64_t maxlen, uint32_t count)
 int pmm_init(pmm_context* context){
     _context = *context;
 
-    // whole map starts as used
     memset(&bitmap, BLOCK_STATUS_8CHUNK_USED, sizeof(bitmap));
 
     for (uint32_t i = 0; i < context->regions_count; i++)
@@ -66,7 +65,7 @@ int pmm_init(pmm_context* context){
             uint32_t index_in_bitmap = (current->address / 8) / 4096;
             uint32_t count_in_bitmap = current->size / 4096 / 8;
 
-            memset(&bitmap + index_in_bitmap, BLOCK_STATUS_FREE, count_in_bitmap);
+            memset(&bitmap[index_in_bitmap], BLOCK_STATUS_FREE, count_in_bitmap);
         }
     }
     
@@ -80,13 +79,14 @@ void* pmm_alloc() {
         if (bitmap[i] != BLOCK_STATUS_CHUNK_USED) {
             int32_t free_bit_index = find_first_free_bit(bitmap[i]);
 
-            if (free_bit_index == -1) { return NULL; }
+            if (free_bit_index == -1) { break; }
 
             bitmap[i] = set_bit(bitmap[i], free_bit_index);
             return (void*)((i * BITMAP_CELL_BIT_SIZE + free_bit_index) * PAGE_SIZE);
         }
     }
     
+    qemu_log("No free memory");
     return NULL;
 }
 

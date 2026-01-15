@@ -112,33 +112,36 @@ void mount_root_fs() {
 void _start_kernel(multiboot_info* info) {
 	serial_init();
 	vga_clear_screen();
-	println("Ichi kernel loading...");
+	qemu_log("Ichi kernel loading...");
 	
 	__early_zero_bss(&__bss_start, &__bss_end);
 	__early_init_pmm(info);
 	__early_init_framebuffer(info);
-	println("INIT PMM MEMORY MANAGER");
+	qemu_log("INIT PMM MEMORY MANAGER");
 
 	init_idt();
 
 	init_pic();
 	
-	println("Ichi kernel enabled PIC...");
+	qemu_log("Ichi kernel enabled PIC...");
 
 	init_pit();
 	
-	println("Ichi kernel enabled PIT...");
+	qemu_log("Ichi kernel enabled PIT...");
 
 	kybrd_init();
 
 	kybrd_set_event_callback(key_callback);
 
-	println("Ichi kernel enabled KEYBOARD...");
+	qemu_log("Ichi kernel enabled KEYBOARD...");
 
 	init_gdt(0, 0);
+
+	qemu_log("Ichi kernel setup GDT...");
+
 	init_vmem();
 
-	println("Ichi kernel setup VMM...");
+	qemu_log("Ichi kernel setup VMM...");
 
 	init_kernel_stack();
 }

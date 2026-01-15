@@ -11,7 +11,7 @@
 typedef uint16_t ptable_index_t;
 
 typedef enum {
-    PAGE_MAPPING_NONE = 0,
+    PAGE_MAPPING_DEFAULT = 0,
     PAGE_MAPPING_USERSPACE = 1,
     PAGE_MAPPING_HUGE_PAGE = 2,
     PAGE_MAPPING_NON_CACHEABLE = 4,
@@ -110,7 +110,6 @@ pte_t pte_create_entry(void* phys_address, PAGE_MAPPING_OPTIONS options) {
 
 pte_t* pt_allocate_into(pte_t* table_index_p, PAGE_MAPPING_OPTIONS options) {
     void* phys = pmm_alloc();
-
     if (!phys) return NULL;
 
     pte_t* ptable = (pte_t*)((vphys_address(phys)));
@@ -186,7 +185,7 @@ void* vmm_map_mmio_region(pagetable_context* ctx, void* phys_start, void* phys_e
 
     while ((uint64_t)phys_start < (uint64_t)phys_end)
     {
-        pte_t* entry = vmm_init_page_entry(ctx, current_vaddr, PTABLE_LVL_PTE, PAGE_MAPPING_NONE);
+        pte_t* entry = vmm_init_page_entry(ctx, current_vaddr, PTABLE_LVL_PTE, PAGE_MAPPING_DEFAULT);
 
         if (entry == NULL) return NULL;
 
@@ -206,31 +205,42 @@ pagetable_context* vmm_get_global_context() {
 
 /// VMM USERSPACE
 
-struct userspace_context
-{
-    void* root_ptable;
-};
+pagetable_context* vmm_create_userspace_context() {
+    pagetable_context* ctx = (pagetable_context*)kmalloc(sizeof(pagetable_context));
+    if (!ctx) return NULL;
 
-// returns the length of allocated memory, expects 4kb aligned numbers
-size_t allocate_umm(uint64_t vaddr_start, size_t len) {
-    vaddr_start = (uint64_t)ALIGN_4KB(vaddr_start);
+    ctx->root_table = (pte_t*)pmm_alloc(PAGE_SIZE);
+    
+    for (uint16_t i = ENTRIES_PER_TABLE / 2; i < ENTRIES_PER_TABLE; i++)
+    {
+        *pte_get_index(ctx->root_table, i) = *pte_get_index(_km_vmm_ctx.root_table, i);
+    }
+
+    return ctx;
+}
+
+size_t vmm_allocate_umm(pagetable_context* ctx, uint64_t vaddress, size_t len) {
+    vaddress = (uint64_t)ALIGN_4KB(vaddress);
     len = (size_t)ALIGN_4KB(len);
 
-    if (vaddr_start + len >= HIGHER_HALF_KERNEL_OFFSET) {
+    if (vaddress + len >= HIGHER_HALF_KERNEL_OFFSET) {
         return 0;
     }
 
-    for (uint64_t i = vaddr_start; i < vaddr_start + len; i += PAGE_SIZE)
+    for (uint64_t i = vaddress; i < vaddress + len; i += PAGE_SIZE)
     {
         void* phys = pmm_alloc();
-        if (!phys) return i - vaddr_start;
-        vmm_map(&_km_vmm_ctx, (void*)i, phys, PAGE_MAPPING_USERSPACE);
+        if (!phys) return i - vaddress;
+
+        vmm_map(ctx, (void*)i, phys, PAGE_MAPPING_USERSPACE);
     }
 
     return len;
 }
 
-//void request_vregion(void* vaddr, size_t len) {}
+void vmm_apply_pagetable(pagetable_context* ctx) {
+    write_cr3((uint64_t)ctx->root_table);
+}
 
 // INITIALIZATION
 
@@ -241,7 +251,7 @@ void direct_map_gigabytes(pagetable_context* ctx, uint16_t count) {
 
     for (uint16_t i = 0; i < count; i++, vstart_addr += GIGABYTE)
     {
-        pte_t* pdpt_entry = vmm_init_page_entry(ctx, vstart_addr, PTABLE_LVL_PDPT, PAGE_MAPPING_NONE);
+        pte_t* pdpt_entry = vmm_init_page_entry(ctx, vstart_addr, PTABLE_LVL_PDPT, PAGE_MAPPING_DEFAULT);
         (*pdpt_entry) = pte_create_entry((void*)(GIGABYTE * i), PAGE_MAPPING_HUGE_PAGE);
     }
 }
@@ -252,7 +262,7 @@ void direct_map_kernel(pagetable_context* ctx) {
 
     for (uint16_t i = 0; i < _km_vmm_globals.kernel_size_pages; i++)
     {
-        if (!vmm_map(ctx, (void*)current_vaddr, (void*)current_paddr, PAGE_MAPPING_NONE)) {
+        if (!vmm_map(ctx, (void*)current_vaddr, (void*)current_paddr, PAGE_MAPPING_DEFAULT)) {
             qemu_log("Failed to map kernel");
             return;
         }
@@ -262,19 +272,31 @@ void direct_map_kernel(pagetable_context* ctx) {
     }
 } 
 
+void setup_higher_half_pml4(pte_t* pml4) {
+    for (uint16_t i = ENTRIES_PER_TABLE / 2; i < ENTRIES_PER_TABLE; i++)
+    {        
+        if(!pt_get_or_allocate_into(pte_get_index(pml4, i), PAGE_MAPPING_DEFAULT)) {
+            qemu_logf("Failed to allocate higher half pml4 entry %d", i);
+            return;
+        }
+    }
+}
+
 
 ERROR_CODE init_vmem() {
     _km_vmm_ctx.root_table = (pte_t*)pmm_alloc();
     if (!_km_vmm_ctx.root_table) return FAILED;
 
-    memset((void*)_km_vmm_ctx.root_table, 0, PAGE_SIZE);
-
+    memset((void*)vphys_address(_km_vmm_ctx.root_table), 0, PAGE_SIZE);
+    
     direct_map_gigabytes(&_km_vmm_ctx, _km_vmm_globals.direct_mapping_size_gb);
     direct_map_kernel(&_km_vmm_ctx);
     
     pmm_load_root_ptable(_km_vmm_ctx.root_table);
 
     _km_vmm_globals.is_post_init = TRUE;
+
+    setup_higher_half_pml4(_km_vmm_ctx.root_table);
 
     return SUCCESS;
 }

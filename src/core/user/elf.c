@@ -26,6 +26,9 @@ typedef struct {
 uint8_t ELF_MAGIC[4] = { 0x7F, 0x45, 0x4C, 0x46 };
 
 void load_and_jump(void* elf_raw) {
+    pagetable_context* ctx = vmm_create_userspace_context();
+    vmm_apply_pagetable(ctx);
+
     Ehdr* ehdr = (Ehdr*)elf_raw;
     Phdr* phdr = (Phdr*)((uint8_t*)elf_raw + ehdr->phoff);
 
@@ -45,7 +48,7 @@ void load_and_jump(void* elf_raw) {
 
             qemu_logf("Copying %d bytes from %x to %x", phdr[i].filesz, src, dest);
             
-            allocate_umm((uint64_t)dest, 4096);
+            vmm_allocate_umm(ctx, (uint64_t)dest, 4096);
             
             for (uint64_t j = 0; j < phdr[i].filesz; j++) dest[j] = src[j];
             
@@ -59,7 +62,7 @@ void load_and_jump(void* elf_raw) {
 
     uint64_t stack = 0x700000;
 
-    allocate_umm(stack, 4096 * 2);
+    vmm_allocate_umm(ctx, stack, 4096 * 2);
 
     qemu_log("===========START==========");
     qemu_dump((void*)ehdr->entry, 200);
