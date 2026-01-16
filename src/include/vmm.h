@@ -30,7 +30,7 @@ void* vmm_get_vaddr(void* phys);
 
 void* vmm_map_mmio_region(pagetable_context* ctx, void* phys_start, void* phys_end);
 
-void* vmm_is_mmio(pagetable_context* ctx, void* virt, void* phys);
+BOOL vmm_is_mmio(void* virt, void* phys);
 
 void vmm_free_page_entry(pagetable_context* ctx, void* vaddr);
 

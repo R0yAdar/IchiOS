@@ -15,17 +15,22 @@
 uint32_t bitmap[512];
 pmm_context _context;
 
-uint32_t set_bit(uint32_t value, uint32_t index) {
+uint32_t set_bit(uint32_t value, uint32_t index)
+{
     return value | (1 << index);
 }
 
-uint32_t free_bit(uint32_t value, uint32_t index) {
+uint32_t free_bit(uint32_t value, uint32_t index)
+{
     return value & (~(1 << index));
 }
 
-int32_t find_first_free_bit(uint32_t value) {
-     for (int i = 0; i < (int)sizeof(value) * 8; ++i) {
-        if (!((value >> i) & 1)) { 
+int32_t find_first_free_bit(uint32_t value)
+{
+    for (int i = 0; i < (int)sizeof(value) * 8; ++i)
+    {
+        if (!((value >> i) & 1))
+        {
             return i;
         }
     }
@@ -33,18 +38,23 @@ int32_t find_first_free_bit(uint32_t value) {
     return -1;
 }
 
-uint64_t find_first_free_bits(uint32_t* values, uint64_t maxlen, uint32_t count) {
+uint64_t find_first_free_bits(uint32_t *values, uint64_t maxlen, uint32_t count)
+{
     uint32_t free_count = 0;
 
-     for (uint64_t i = 0; i < maxlen * BITMAP_CELL_BIT_SIZE; ++i) {
-        if (!((values[i / BITMAP_CELL_BIT_SIZE] >> (i % BITMAP_CELL_BIT_SIZE)) & 1)) {
+    for (uint64_t i = 0; i < maxlen * BITMAP_CELL_BIT_SIZE; ++i)
+    {
+        if (!((values[i / BITMAP_CELL_BIT_SIZE] >> (i % BITMAP_CELL_BIT_SIZE)) & 1))
+        {
             ++free_count;
 
-            if (free_count == count) {
+            if (free_count == count)
+            {
                 return i - count + 1;
             }
         }
-        else {
+        else
+        {
             free_count = 0;
         }
     }
@@ -52,54 +62,65 @@ uint64_t find_first_free_bits(uint32_t* values, uint64_t maxlen, uint32_t count)
     return -1;
 }
 
-int pmm_init(pmm_context* context){
+int pmm_init(pmm_context *context)
+{
     _context = *context;
 
     memset(&bitmap, BLOCK_STATUS_8CHUNK_USED, sizeof(bitmap));
 
     for (uint32_t i = 0; i < context->regions_count; i++)
     {
-        memory_region* current = context->regions + i;
+        memory_region *current = context->regions + i;
 
-        if (current->type == MEMORY_REGION_AVAILABLE) {
+        if (current->type == MEMORY_REGION_AVAILABLE)
+        {
             uint32_t index_in_bitmap = (current->address / 8) / 4096;
             uint32_t count_in_bitmap = current->size / 4096 / 8;
 
             memset(&bitmap[index_in_bitmap], BLOCK_STATUS_FREE, count_in_bitmap);
         }
     }
-    
+
     memset(&bitmap, BLOCK_STATUS_8CHUNK_USED, ((context->kernel_ram_size + 4095) / 4096 + 7) / 8);
 
     return 0;
 }
 
-void* pmm_alloc() {
-    for(uint64_t i = 0; i < LENGTH(bitmap); ++i) {
-        if (bitmap[i] != BLOCK_STATUS_CHUNK_USED) {
+void *pmm_alloc()
+{
+    for (uint64_t i = 0; i < LENGTH(bitmap); ++i)
+    {
+        if (bitmap[i] != BLOCK_STATUS_CHUNK_USED)
+        {
             int32_t free_bit_index = find_first_free_bit(bitmap[i]);
 
-            if (free_bit_index == -1) { break; }
+            if (free_bit_index == -1)
+            {
+                break;
+            }
 
             bitmap[i] = set_bit(bitmap[i], free_bit_index);
-            return (void*)((i * BITMAP_CELL_BIT_SIZE + free_bit_index) * PAGE_SIZE);
+            return (void *)((i * BITMAP_CELL_BIT_SIZE + free_bit_index) * PAGE_SIZE);
         }
     }
-    
+
     qemu_log("No free memory");
     return NULL;
 }
 
-void pmm_free(void* block) {
+void pmm_free(void *block)
+{
     uint32_t index_in_bitmap = (uint64_t)block / PMM_BLOCK_SIZE / BITMAP_CELL_BIT_SIZE;
     uint32_t bit_index = ((uint64_t)block / PMM_BLOCK_SIZE) % BITMAP_CELL_BIT_SIZE;
     bitmap[index_in_bitmap] = free_bit(bitmap[index_in_bitmap], bit_index);
 }
 
-void* pmm_alloc_blocks(uint32_t count) {
+void *pmm_alloc_blocks(uint32_t count)
+{
     uint64_t index = find_first_free_bits(bitmap, LENGTH(bitmap), count);
 
-    if (index == (uint64_t)-1) {
+    if (index == (uint64_t)-1)
+    {
         qemu_log("No free memory");
         return NULL;
     }
@@ -114,11 +135,12 @@ void* pmm_alloc_blocks(uint32_t count) {
 
         bitmap[cell_index] = set_bit(bitmap[cell_index], bit_index);
     }
-    
-    return (void*)((index - count) * PMM_BLOCK_SIZE);
+
+    return (void *)((index - count) * PMM_BLOCK_SIZE);
 }
 
-void pmm_free_blocks(void* start, uint32_t count) {
+void pmm_free_blocks(void *start, uint32_t count)
+{
     uint64_t index = (uint64_t)start / PMM_BLOCK_SIZE;
     uint64_t cell_index;
     uint32_t bit_index;
@@ -132,10 +154,12 @@ void pmm_free_blocks(void* start, uint32_t count) {
     }
 }
 
-void* pmm_get_root_ptable() {
-    return (void*)read_cr3();
+void *pmm_get_root_ptable()
+{
+    return (void *)read_cr3();
 }
 
-void pmm_load_root_ptable(void* phys) {
+void pmm_load_root_ptable(void *phys)
+{
     write_cr3((uint64_t)phys);
 }

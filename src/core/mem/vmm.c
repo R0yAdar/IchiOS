@@ -230,8 +230,8 @@ void* vmm_map_mmio_region(pagetable_context* ctx, void* phys_start, void* phys_e
     return vaddr;
 }
 
-void* vmm_is_mmio(pagetable_context* ctx, void* virt, void* phys) {
-    return virt == ((void*)(VMM_RAM_MMIO_MAPPING_OFFSET | (uint64_t)phys));
+BOOL vmm_is_mmio(void* virt, void* phys) {
+    return (BOOL)(virt == ((void*)(VMM_RAM_MMIO_MAPPING_OFFSET | (uint64_t)phys)));
 }
 
 pagetable_context* vmm_get_global_context() {
