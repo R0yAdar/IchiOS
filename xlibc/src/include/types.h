@@ -4,7 +4,7 @@
 #include "stdint.h"
 #include "err.h"
 
-#define BOOL uint8_t
+typedef uint8_t BOOL;
 
 #define FALSE (BOOL)0
 #define TRUE (BOOL)1

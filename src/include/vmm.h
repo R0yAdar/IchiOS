@@ -4,25 +4,15 @@
 #include "types.h"
 #include "multiboot.h"
 
-#define HIGHER_HALF_KERNEL_OFFSET 0xffffffff80000000
-#define ENTRIES_PER_TABLE 512
-#define RAM_DIRECT_MAPPING_OFFSET 0xffff800000000000
-#define RAM_MMIO_MAPPING_OFFSET 0xffff900000000000
-#define ALIGN_4KB(ptr) ((void*)((uint64_t)(ptr) & (~0xFFF)))
+#define VMM_HIGHER_HALF_KERNEL_OFFSET 0xffffffff80000000
+#define VMM_PTABLE_ENTRY_COUNT 512
+#define VMM_RAM_DIRECT_MAPPING_OFFSET 0xffff800000000000
+#define VMM_RAM_MMIO_MAPPING_OFFSET 0xffff900000000000
+#define VMM_ALIGN_4KB(ptr) ((void*)((uint64_t)(ptr) & (~0xFFF)))
 
 typedef struct pagetable_context pagetable_context;
 
-void* vphys_address(void* phys);
-
-ERROR_CODE init_vmem();
-
-void* vmem_allocate_page();
-
-void vmem_free_page();
-
-void* vmem_lookup_paddress(void* virt);
-
-void vmem_map_page(void* phys, void* virt);
+ERROR_CODE vmm_init();
 
 void* kpage_alloc(size_t page_count);
 
@@ -36,11 +26,19 @@ void* kmalloc(size_t len);
 
 void kfree(void* vaddr);
 
+void* vmm_get_vaddr(void* phys);
+
 void* vmm_map_mmio_region(pagetable_context* ctx, void* phys_start, void* phys_end);
+
+void* vmm_is_mmio(pagetable_context* ctx, void* virt, void* phys);
+
+void vmm_free_page_entry(pagetable_context* ctx, void* vaddr);
 
 pagetable_context* vmm_get_global_context();
 
 pagetable_context* vmm_create_userspace_context();
+
+void vmm_destroy_userspace_context(pagetable_context* ctx);
 
 size_t vmm_allocate_umm(pagetable_context* ctx, uint64_t vaddress, size_t len);
 

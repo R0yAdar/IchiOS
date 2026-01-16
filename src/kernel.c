@@ -58,7 +58,6 @@ void __early_init_pmm(multiboot_info* info) {
 void __early_init_framebuffer(multiboot_info* info) {
 	qemu_log("Saving framebuffer info...");
 	vbe_mode_info_structure* mode_info = (vbe_mode_info_structure*)(uint64_t)info->m_vbe_mode_info;
-	qemu_log_int(mode_info->framebuffer);
 	vbe_mode_info = *mode_info;
 }
 
@@ -139,7 +138,7 @@ void _start_kernel(multiboot_info* info) {
 
 	qemu_log("Ichi kernel setup GDT...");
 
-	init_vmem();
+	vmm_init();
 
 	qemu_log("Ichi kernel setup VMM...");
 
@@ -190,7 +189,7 @@ void _rest_of_start() {
 
 
 	framebuffer* fb = framebuffer_init(
-		vphys_address((void*)(uint64_t)vbe_mode_info.framebuffer), 
+		vmm_get_vaddr((void*)(uint64_t)vbe_mode_info.framebuffer), 
 		vbe_mode_info.width, 
 		vbe_mode_info.height, 
 		vbe_mode_info.pitch, 

@@ -30,7 +30,7 @@ struct pagetable_context
 };
 
 typedef struct {
-    BOOL is_post_init;
+    BOOL is_remapped;
     uint16_t direct_mapping_size_gb;
     uint16_t kernel_size_pages;
 } vmm_globals;
@@ -40,12 +40,12 @@ typedef struct {
 pagetable_context _km_vmm_ctx;
 
 vmm_globals _km_vmm_globals = {
-    .is_post_init = FALSE,
+    .is_remapped = FALSE,
     .direct_mapping_size_gb = 8,
     .kernel_size_pages = 512
 };
 
-// VMM Utilities
+/// VMM Utilities
 
 ptable_index_t offset_to_index(void* address, PTABLE_LVL lvl) {
     switch (lvl)
@@ -63,8 +63,8 @@ ptable_index_t offset_to_index(void* address, PTABLE_LVL lvl) {
     return (ptable_index_t)-1;
 }
 
-void* vphys_address(void* phys) {
-    return (void*)((uint64_t)phys | ((_km_vmm_globals.is_post_init) ? (RAM_DIRECT_MAPPING_OFFSET) : 0));
+void* vmm_get_vaddr(void* phys) {
+    return (void*)((uint64_t)phys | ((_km_vmm_globals.is_remapped) ? (VMM_RAM_DIRECT_MAPPING_OFFSET) : 0));
 }
 
 void* canonify(void* address) {
@@ -73,46 +73,46 @@ void* canonify(void* address) {
         (void*)((~(0xffffull << 48)) & (uint64_t)address);
 }
 
-// PTE
+/// PTE
 
 pte_t* pte_get_index(pte_t* table, ptable_index_t index) { 
-    if (index >= ENTRIES_PER_TABLE) return NULL;
+    if (index >= VMM_PTABLE_ENTRY_COUNT) return NULL;
 
-    return (pte_t*)vphys_address(table + index);
+    return (pte_t*)vmm_get_vaddr(table + index);
 }
 
 void pte_put(pte_t* table, ptable_index_t index, pte_t value) { 
-    if (index >= ENTRIES_PER_TABLE) return;
+    if (index >= VMM_PTABLE_ENTRY_COUNT) return;
 
-    *((pte_t*)vphys_address(table  + index)) = value;
+    *((pte_t*)vmm_get_vaddr(table  + index)) = value;
 }
 
 void pte_apply_options_to_entry(pte_t* entry, PAGE_MAPPING_OPTIONS options) {
     if (options & PAGE_MAPPING_USERSPACE) {
-        mark_user_space(entry);
+        pte_mark_user_space(entry);
     }
     if (options & PAGE_MAPPING_HUGE_PAGE) {
-        mark_huge_page(entry);
+        pte_mark_huge_page(entry);
     }
     if (options & PAGE_MAPPING_NON_CACHEABLE) {
-        mark_non_cacheable(entry);
+        pte_mark_non_cacheable(entry);
     }
 }
 
 pte_t pte_create_entry(void* phys_address, PAGE_MAPPING_OPTIONS options) {
     pte_t entry = DEFAULT_PTE;
     pte_apply_options_to_entry(&entry, options);
-    assign_address(&entry, phys_address);
+    pte_assign_address(&entry, phys_address);
     return entry;
 }
 
-// PT 
+/// PT 
 
 pte_t* pt_allocate_into(pte_t* table_index_p, PAGE_MAPPING_OPTIONS options) {
     void* phys = pmm_alloc();
     if (!phys) return NULL;
 
-    pte_t* ptable = (pte_t*)((vphys_address(phys)));
+    pte_t* ptable = (pte_t*)((vmm_get_vaddr(phys)));
     memset((void*)ptable, 0, PAGE_SIZE);
 
     (*table_index_p) = pte_create_entry(phys, options);
@@ -125,16 +125,16 @@ pte_t* pt_get_or_allocate_into(pte_t* table_index_p, PAGE_MAPPING_OPTIONS option
         return pt_allocate_into(table_index_p, options);
     }
 
-    pte_t* pte = (pte_t*)vphys_address(pte_get_address(table_index_p));
+    pte_t* pte = (pte_t*)vmm_get_vaddr(pte_get_address(table_index_p));
     pte_apply_options_to_entry(pte, options);
 
     return pte;
 }
 
-// VMM
+/// VMM
 
 pte_t* vmm_init_page_entry(pagetable_context* ctx, void* vaddr, PTABLE_LVL level, PAGE_MAPPING_OPTIONS options) {    
-    vaddr = ALIGN_4KB(vaddr);
+    vaddr = VMM_ALIGN_4KB(vaddr);
     if (vaddr == NULL) return NULL;
 
     pte_t* pml4_entry = pte_get_index(ctx->root_table, offset_to_index(vaddr, PTABLE_LVL_PML4));
@@ -158,11 +158,42 @@ pte_t* vmm_init_page_entry(pagetable_context* ctx, void* vaddr, PTABLE_LVL level
     return pte;
 }
 
-void vmm_free_page_entry(void* vaddr) { 
-    vaddr = ALIGN_4KB(vaddr);
+void vmm_free_pte(void* vaddr, pte_t* pte) {
+    pmm_free(pte_get_address(pte));
+    (*pte) = 0;
+    flush_tlb((uint64_t)vaddr);
+}
+
+void vmm_free_page_entry(pagetable_context* ctx, void* vaddr) { 
+    vaddr = VMM_ALIGN_4KB(vaddr);
     if (vaddr== NULL) return;
 
+    pte_t* pml4_entry = pte_get_index(ctx->root_table, offset_to_index(vaddr, PTABLE_LVL_PML4));
+    pte_t* pdpt = (pte_t*)vmm_get_vaddr(pte_get_address(pml4_entry));
+    if (!pdpt) return;
     
+    pte_t* pdpt_entry = pte_get_index(pdpt, offset_to_index(vaddr, PTABLE_LVL_PDPT));
+    
+    if (pte_is_huge_page(pdpt_entry)) {
+        vmm_free_pte(vaddr, pdpt_entry);
+        return;
+    }
+
+    pte_t* pde = (pte_t*)vmm_get_vaddr(pte_get_address(pdpt_entry));
+    if (!pde) return;
+    
+    pte_t* pde_entry = pte_get_index(pde, offset_to_index(vaddr, PTABLE_LVL_PDE));
+    
+    if (pte_is_huge_page(pde_entry)) {
+        vmm_free_pte(vaddr, pde_entry);
+        return;
+    }
+
+    pte_t* pt = (pte_t*)vmm_get_vaddr(pte_get_address(pde_entry));;
+    if (!pt) return;
+
+    pte_t* pte = pte_get_index(pt, offset_to_index(vaddr, PTABLE_LVL_PTE));
+    vmm_free_pte(vaddr, pte);
 }
 
 ERROR_CODE vmm_map(pagetable_context* ctx, void* vaddr, void* paddr, PAGE_MAPPING_OPTIONS options) {
@@ -178,9 +209,9 @@ ERROR_CODE vmm_map(pagetable_context* ctx, void* vaddr, void* paddr, PAGE_MAPPIN
 }
 
 void* vmm_map_mmio_region(pagetable_context* ctx, void* phys_start, void* phys_end) {
-    phys_start = ALIGN_4KB(phys_start);
-    phys_end = ALIGN_4KB(phys_end);
-    void* vaddr = (void*)(RAM_MMIO_MAPPING_OFFSET | (uint64_t)phys_start);
+    phys_start = VMM_ALIGN_4KB(phys_start);
+    phys_end = VMM_ALIGN_4KB(phys_end);
+    void* vaddr = (void*)(VMM_RAM_MMIO_MAPPING_OFFSET | (uint64_t)phys_start);
     void* current_vaddr = vaddr;
 
     while ((uint64_t)phys_start < (uint64_t)phys_end)
@@ -199,6 +230,10 @@ void* vmm_map_mmio_region(pagetable_context* ctx, void* phys_start, void* phys_e
     return vaddr;
 }
 
+void* vmm_is_mmio(pagetable_context* ctx, void* virt, void* phys) {
+    return virt == ((void*)(VMM_RAM_MMIO_MAPPING_OFFSET | (uint64_t)phys));
+}
+
 pagetable_context* vmm_get_global_context() {
     return &_km_vmm_ctx;
 }
@@ -211,7 +246,7 @@ pagetable_context* vmm_create_userspace_context() {
 
     ctx->root_table = (pte_t*)pmm_alloc(PAGE_SIZE);
     
-    for (uint16_t i = ENTRIES_PER_TABLE / 2; i < ENTRIES_PER_TABLE; i++)
+    for (uint16_t i = VMM_PTABLE_ENTRY_COUNT / 2; i < VMM_PTABLE_ENTRY_COUNT; i++)
     {
         *pte_get_index(ctx->root_table, i) = *pte_get_index(_km_vmm_ctx.root_table, i);
     }
@@ -220,10 +255,10 @@ pagetable_context* vmm_create_userspace_context() {
 }
 
 size_t vmm_allocate_umm(pagetable_context* ctx, uint64_t vaddress, size_t len) {
-    vaddress = (uint64_t)ALIGN_4KB(vaddress);
-    len = (size_t)ALIGN_4KB(len);
+    vaddress = (uint64_t)VMM_ALIGN_4KB(vaddress);
+    len = (size_t)VMM_ALIGN_4KB(len);
 
-    if (vaddress + len >= HIGHER_HALF_KERNEL_OFFSET) {
+    if (vaddress + len >= VMM_HIGHER_HALF_KERNEL_OFFSET) {
         return 0;
     }
 
@@ -238,16 +273,51 @@ size_t vmm_allocate_umm(pagetable_context* ctx, uint64_t vaddress, size_t len) {
     return len;
 }
 
+void vmm_destroy_userspace_context(pagetable_context* ctx) {
+    for (uint16_t l4 = 0; l4 < VMM_PTABLE_ENTRY_COUNT / 2; l4++)
+    {
+        pte_t* pdpt = pte_get_address(&ctx->root_table[l4]);
+        if (!pdpt) continue;
+
+        for (uint16_t l3 = 0; l3 < VMM_PTABLE_ENTRY_COUNT; l3++)
+        {
+            pte_t* pde = pte_get_address(&pdpt[l3]);
+            if (!pde) continue;
+
+            for (uint16_t l2 = 0; l2 < VMM_PTABLE_ENTRY_COUNT; l2++)
+            {
+                pte_t* pt = pte_get_address(&pde[l2]);
+                if (!pt) continue;
+
+                for (uint16_t l1 = 0; l1 < VMM_PTABLE_ENTRY_COUNT; l1++)
+                {
+                    void* phys = pte_get_address(&pt[l1]);
+                    if (!phys) continue;
+                    pmm_free(phys);
+                }
+
+                pmm_free(pt);
+            }
+
+            pmm_free(pde);
+        }
+
+        pmm_free(pdpt);
+    }
+
+    pmm_free(ctx->root_table);
+}
+
 void vmm_apply_pagetable(pagetable_context* ctx) {
     write_cr3((uint64_t)ctx->root_table);
 }
 
-// INITIALIZATION
+/// INITIALIZATION
 
-void direct_map_gigabytes(pagetable_context* ctx, uint16_t count) {
+void vmm_direct_map_gigabytes(pagetable_context* ctx, uint16_t count) {
     const uint64_t GIGABYTE = 1024 * 1024 * 1024;
     
-    uint8_t* vstart_addr = (uint8_t*)RAM_DIRECT_MAPPING_OFFSET;
+    uint8_t* vstart_addr = (uint8_t*)VMM_RAM_DIRECT_MAPPING_OFFSET;
 
     for (uint16_t i = 0; i < count; i++, vstart_addr += GIGABYTE)
     {
@@ -256,8 +326,8 @@ void direct_map_gigabytes(pagetable_context* ctx, uint16_t count) {
     }
 }
 
-void direct_map_kernel(pagetable_context* ctx) {
-    uint8_t* current_vaddr = (uint8_t*)HIGHER_HALF_KERNEL_OFFSET;
+void vmm_direct_map_kernel(pagetable_context* ctx) {
+    uint8_t* current_vaddr = (uint8_t*)VMM_HIGHER_HALF_KERNEL_OFFSET;
     uint8_t* current_paddr = (uint8_t*)0x0;
 
     for (uint16_t i = 0; i < _km_vmm_globals.kernel_size_pages; i++)
@@ -272,8 +342,8 @@ void direct_map_kernel(pagetable_context* ctx) {
     }
 } 
 
-void setup_higher_half_pml4(pte_t* pml4) {
-    for (uint16_t i = ENTRIES_PER_TABLE / 2; i < ENTRIES_PER_TABLE; i++)
+void vmm_setup_higher_half_pml4(pte_t* pml4) {
+    for (uint16_t i = VMM_PTABLE_ENTRY_COUNT / 2; i < VMM_PTABLE_ENTRY_COUNT; i++)
     {        
         if(!pt_get_or_allocate_into(pte_get_index(pml4, i), PAGE_MAPPING_DEFAULT)) {
             qemu_logf("Failed to allocate higher half pml4 entry %d", i);
@@ -282,21 +352,20 @@ void setup_higher_half_pml4(pte_t* pml4) {
     }
 }
 
-
-ERROR_CODE init_vmem() {
+ERROR_CODE vmm_init() {
     _km_vmm_ctx.root_table = (pte_t*)pmm_alloc();
     if (!_km_vmm_ctx.root_table) return FAILED;
 
-    memset((void*)vphys_address(_km_vmm_ctx.root_table), 0, PAGE_SIZE);
+    memset((void*)vmm_get_vaddr(_km_vmm_ctx.root_table), 0, PAGE_SIZE);
     
-    direct_map_gigabytes(&_km_vmm_ctx, _km_vmm_globals.direct_mapping_size_gb);
-    direct_map_kernel(&_km_vmm_ctx);
+    vmm_direct_map_gigabytes(&_km_vmm_ctx, _km_vmm_globals.direct_mapping_size_gb);
+    vmm_direct_map_kernel(&_km_vmm_ctx);
     
     pmm_load_root_ptable(_km_vmm_ctx.root_table);
 
-    _km_vmm_globals.is_post_init = TRUE;
+    _km_vmm_globals.is_remapped = TRUE;
 
-    setup_higher_half_pml4(_km_vmm_ctx.root_table);
+    vmm_setup_higher_half_pml4(_km_vmm_ctx.root_table);
 
     return SUCCESS;
 }

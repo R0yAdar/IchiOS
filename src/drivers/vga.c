@@ -1,14 +1,10 @@
 #include "vga.h"
 #include "vmm.h"
 
-/*
-0xA0000 - 0xBFFFF Video Memory used for graphics modes
-0xB0000 - 0xB7777 Monochrome Text mode
-0xB8000 - 0xBFFFF Color text mode and CGA compatible graphics modes
-*/
+#define VGA_COLOR_TEXT_MODE_ADDRESS ((void*)0xb8000)
 
 void vga_put(vga_text_input* input) {
-  volatile char *vga_buf = (char *) vphys_address(0xb8000);
+  volatile char* vga_buf = (char*)vmm_get_vaddr(VGA_COLOR_TEXT_MODE_ADDRESS);
 
   vga_buf += (input->y * VGA_COLUMNS_NUM + input->x) * 2;
 
@@ -24,7 +20,7 @@ void vga_put(vga_text_input* input) {
 }
 
 void vga_clear_screen() {
-  volatile char *vga_buf = (char *)0xb8000;
+  volatile char* vga_buf = (char*)vmm_get_vaddr(VGA_COLOR_TEXT_MODE_ADDRESS);
 
   for (int i = 0; i < VGA_COLUMNS_NUM * VGA_ROWS_NUM * 2; i++) {
     vga_buf[i] = '\0';

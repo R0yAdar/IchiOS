@@ -36,7 +36,7 @@ uint32_t _km_compress_4kb_aligned_local_address(void* ptr) {
 }
 
 void* _km_decompress_4kb_aligned_local_address(uint32_t caddr) {
-    return (void*)((((uint64_t)caddr) << 12) | RAM_DIRECT_MAPPING_OFFSET);
+    return (void*)((((uint64_t)caddr) << 12) | VMM_RAM_DIRECT_MAPPING_OFFSET);
 }
 
 uint16_t _kmalloc_fl_roundup_2power(uint16_t length) {
@@ -228,7 +228,6 @@ void* kmalloc(size_t len) {
             return vaddr;
         }
 
-        // special case -> we don't need to store metadata!!!
         if (page_count == 1) { 
             return vaddr;
         }
@@ -243,7 +242,6 @@ void* kmalloc(size_t len) {
     len = _kmalloc_fl_roundup_2power(len);
 
     ke_set_block_length(&metadata, len);
-    //uint8_t index = _kmalloc_fl_size_to_index(len);
 
     void* addr = _kmalloc_fl_get(len);
 

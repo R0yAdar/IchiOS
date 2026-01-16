@@ -3,6 +3,8 @@
 
 #include "vfs.h"
 
+typedef struct elf elf;
+
 void elf_load(file* f);
 
 #endif

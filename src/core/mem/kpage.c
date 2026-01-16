@@ -8,7 +8,7 @@ void* kpage_alloc(size_t page_count) {
     
     if (paddr == NULL) return NULL;
     
-    void* vaddr = (void*)(RAM_DIRECT_MAPPING_OFFSET | (uint64_t)paddr);
+    void* vaddr = (void*)(VMM_RAM_DIRECT_MAPPING_OFFSET | (uint64_t)paddr);
     memset((void*)vaddr, 0, PAGE_SIZE * page_count);
 
     return vaddr;
@@ -28,17 +28,21 @@ void* kpage_alloc_dma(size_t page_count, void** out_phys_address) {
 
 void kpage_free_dma(size_t page_count, void* vaddr, void* phys) {
     if (!phys || !vaddr) return;
-    // you can verify that phys and vaddr match
+
+    if (!vmm_is_mmio(vmm_get_global_context(), vaddr, phys)) return;
 
     pmm_free_blocks(phys, page_count);
 
-    // TODO: remove virtual mapping
+    for (size_t i = 0; i < page_count; i++)
+    {
+        vmm_free_page_entry(vmm_get_global_context(), (void*)((uint64_t)vaddr + i * PAGE_SIZE));
+    }
 }
 
 
 void kpage_free(void* vaddr, size_t page_count) {
     if (vaddr == NULL) return;
-    if (((uint64_t)vaddr & RAM_DIRECT_MAPPING_OFFSET) != RAM_DIRECT_MAPPING_OFFSET) return;
+    if (((uint64_t)vaddr & VMM_RAM_DIRECT_MAPPING_OFFSET) != VMM_RAM_DIRECT_MAPPING_OFFSET) return;
 
-    pmm_free_blocks((void*)((~RAM_DIRECT_MAPPING_OFFSET) & (uint64_t)vaddr), page_count);
+    pmm_free_blocks((void*)((~VMM_RAM_DIRECT_MAPPING_OFFSET) & (uint64_t)vaddr), page_count);
 }

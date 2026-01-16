@@ -3,10 +3,10 @@
 #include "serial.h"
 #include "assembly.h"
 
-typedef struct {
+struct elf {
     void* data;
     void* entry;
-} elf;
+};
 
 #pragma pack (push, 1)
 
