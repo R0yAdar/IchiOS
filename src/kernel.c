@@ -2,6 +2,7 @@
 #include "core/intrp/pic.h"
 #include "core/intrp/pit.h"
 #include "core/user/elf.h"
+#include "core/user/process.h"
 #include "ahci.h"
 #include "stdint.h"
 #include "vga.h"
@@ -237,10 +238,13 @@ void _rest_of_start()
 
 	file *exe = fopen("/files/example.elf", READ);
 
-	if (!exe)
+	if (!exe) {
 		qemu_log("Failed to open exe file");
-	else
-		elf_load(exe);
+	}
+	else {
+		process_ctx* p = process_create();
+		process_exec(p, exe);
+	}
 
 	while (1)
 	{

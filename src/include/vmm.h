@@ -8,7 +8,7 @@
 #define VMM_PTABLE_ENTRY_COUNT 512
 #define VMM_RAM_DIRECT_MAPPING_OFFSET 0xffff800000000000
 #define VMM_RAM_MMIO_MAPPING_OFFSET 0xffff900000000000
-#define VMM_ALIGN_4KB(ptr) ((void*)((uint64_t)(ptr) & (~0xFFF)))
+#define VMM_ALIGN_4KB(ptr) ((void*)(((uint64_t)(ptr) + 4095) & (~0xFFF)))
 
 typedef struct pagetable_context pagetable_context;
 
@@ -40,7 +40,7 @@ pagetable_context* vmm_create_userspace_context();
 
 void vmm_destroy_userspace_context(pagetable_context* ctx);
 
-size_t vmm_allocate_umm(pagetable_context* ctx, uint64_t vaddress, size_t len);
+void* vmm_allocate_umm(pagetable_context* ctx, uint64_t vaddress, size_t len);
 
 void vmm_apply_pagetable(pagetable_context* ctx);
 

@@ -1,13 +1,16 @@
 #include "vmm.h"
 #include "pmm.h"
 
-/*
-    KMALLOC
-*/
+/// KMALLOC
 
-/* Structures */
+/// Definitions
 
-#pragma pack (push, 1)
+#define KMALLOC_SMALL_BLOCK_MAX_SIZE 2048
+#define KMALLOC_MINIMUM_BLOCK_SIZE 8
+
+/// Structures
+
+#pragma pack(push, 1)
 
 typedef struct
 {
@@ -20,40 +23,47 @@ typedef struct
 
 typedef struct kmalloc_freelist_page
 {
-    void* addresses[KMALLOC_FREELIST_PAGE_MAX_ADDR];
+    void *addresses[KMALLOC_FREELIST_PAGE_MAX_ADDR];
     uint16_t count;
-    struct kmalloc_freelist_page* next;
+    struct kmalloc_freelist_page *next;
 } kmalloc_freelist_page_t;
 
+#pragma pack(pop)
 
-#pragma pack (pop)
+/// Utility functions
 
-/* Utility functions */
-
-// local addresses are from 0xffff800000000000 onwards
-uint32_t _km_compress_4kb_aligned_local_address(void* ptr) {
+// Local addresses are from 0xffff800000000000 onwards
+uint32_t _km_compress_4kb_aligned_local_address(void *ptr)
+{
     return (uint32_t)((uint64_t)ptr >> 12);
 }
 
-void* _km_decompress_4kb_aligned_local_address(uint32_t caddr) {
-    return (void*)((((uint64_t)caddr) << 12) | VMM_RAM_DIRECT_MAPPING_OFFSET);
+void *_km_decompress_4kb_aligned_local_address(uint32_t caddr)
+{
+    return (void *)((((uint64_t)caddr) << 12) | VMM_RAM_DIRECT_MAPPING_OFFSET);
 }
 
-uint16_t _kmalloc_fl_roundup_2power(uint16_t length) {
-    // assert length <= 0x800
+uint16_t _kmalloc_fl_roundup_2power(uint16_t length)
+{
+    // Assert length <= 0x800
     uint16_t mask = 0x800;
 
-    while (!(length & mask)) mask = mask >> 1;
+    while (!(length & mask))
+        mask = mask >> 1;
 
-    if (length & (~mask)) return mask << 1;
-    else return mask;
+    if (length & (~mask))
+        return mask << 1;
+    else
+        return mask;
 }
 
-uint8_t _kmalloc_log2(uint16_t size) {
-    // optimize with tzbcnt
+// Can optimize with tzbcnt on x86
+uint8_t _kmalloc_log2(uint16_t size)
+{
     uint8_t zero_bits_count = 0;
-    
-    while(!(size & 0x1)) {
+
+    while (!(size & 0x1))
+    {
         size = size >> 1;
         ++zero_bits_count;
     }
@@ -61,44 +71,49 @@ uint8_t _kmalloc_log2(uint16_t size) {
     return zero_bits_count;
 }
 
-uint8_t _kmalloc_fl_size_to_index(uint16_t size) {
-    // we start from 8 --> 1000, so index 3 should be zero
+// The minimum size is 8, 0b1000 so index 3 should be zero
+uint8_t _kmalloc_fl_size_to_index(uint16_t size)
+{
     return _kmalloc_log2(size) - 3;
 }
 
-void* get_4kb_aligned_address(void* addr) { 
-    return (void*)((uint64_t)addr & (~(0xFFF)));
+void *_get_4kb_aligned_address(void *addr)
+{
+    return (void *)((uint64_t)addr & (~(0xFFF)));
 }
 
-/* Internal Definitions */
-
-#define KMALLOC_SMALL_BLOCK_MAX_SIZE 2048
-#define MINIMUM_BLOCK_SIZE 8
-
-/* Internal Functions */
+/// Implementation
 
 uint16_t _kmalloc_split_page_block_length[] = {8, 16, 32, 64, 128, 256, 512, 1024, 2048};
 
-uint64_t ke_get_block_length(kmalloc_entry_metadata_t* metadata) {
-    if (metadata->compressed_length < sizeof(_kmalloc_split_page_block_length)) {
+uint64_t ke_get_block_length(kmalloc_entry_metadata_t *metadata)
+{
+    if (metadata->compressed_length < sizeof(_kmalloc_split_page_block_length))
+    {
         return _kmalloc_split_page_block_length[metadata->compressed_length];
     }
-    else {
+    else
+    {
         return (metadata->compressed_length - (sizeof(_kmalloc_split_page_block_length) - 1)) * PAGE_SIZE;
     }
 }
 
-// length is a power of 2
-void ke_set_block_length(kmalloc_entry_metadata_t* metadata, uint64_t length) {
-    if (length <= (PAGE_SIZE / 2)) {
-        metadata->compressed_length = _kmalloc_log2((uint16_t)length) - 3; // we start from 2^3 = 8
-    } else {
+// Length is a power of 2
+void ke_set_block_length(kmalloc_entry_metadata_t *metadata, uint64_t length)
+{
+    if (length <= (PAGE_SIZE / 2))
+    {
+        metadata->compressed_length = _kmalloc_log2((uint16_t)length) - 3; // 8 (2^3) is the minimum
+    }
+    else
+    {
         metadata->compressed_length = (length / PAGE_SIZE) + (sizeof(_kmalloc_split_page_block_length) - 1);
     }
 }
 
-kmalloc_entry_metadata_t* _ke_get_metadata(void* addr) {
-    return (kmalloc_entry_metadata_t*)get_4kb_aligned_address(addr);
+kmalloc_entry_metadata_t *_ke_get_metadata(void *addr)
+{
+    return (kmalloc_entry_metadata_t *)_get_4kb_aligned_address(addr);
 }
 
 // Allocation Sizes (Total 9)
@@ -111,28 +126,33 @@ kmalloc_entry_metadata_t* _ke_get_metadata(void* addr) {
 // 512
 // 1024
 // 2048
-kmalloc_freelist_page_t* _kmalloc_freelist[9] = {0};
+kmalloc_freelist_page_t *_kmalloc_freelist[9] = {0};
 
-kmalloc_freelist_page_t* kmalloc_fl_page_create() {
-    kmalloc_freelist_page_t* p = (kmalloc_freelist_page_t*)kpage_alloc(1);
+kmalloc_freelist_page_t *kmalloc_fl_page_create()
+{
+    kmalloc_freelist_page_t *p = (kmalloc_freelist_page_t *)kpage_alloc(1);
     p->count = 0;
     p->next = NULL;
-    for (size_t i = 0; i < KMALLOC_FREELIST_PAGE_MAX_ADDR; i++) {
+    for (size_t i = 0; i < KMALLOC_FREELIST_PAGE_MAX_ADDR; i++)
+    {
         p->addresses[i] = NULL;
     }
 
     return p;
 }
 
-void _kmalloc_fl_add(uint16_t size, void* vaddr) {
+void _kmalloc_fl_add(uint16_t size, void *vaddr)
+{
     uint8_t index = _kmalloc_fl_size_to_index(size);
-    kmalloc_freelist_page_t* current = _kmalloc_freelist[index];
+    kmalloc_freelist_page_t *current = _kmalloc_freelist[index];
 
-    if (current == NULL){
+    if (current == NULL)
+    {
         current = kmalloc_fl_page_create();
     }
-    else if (current->count == KMALLOC_FREELIST_PAGE_MAX_ADDR) {
-        kmalloc_freelist_page_t* new_page = kmalloc_fl_page_create();
+    else if (current->count == KMALLOC_FREELIST_PAGE_MAX_ADDR)
+    {
+        kmalloc_freelist_page_t *new_page = kmalloc_fl_page_create();
         new_page->next = current;
         current = new_page;
     }
@@ -141,27 +161,30 @@ void _kmalloc_fl_add(uint16_t size, void* vaddr) {
     _kmalloc_freelist[index] = current;
 }
 
-void* _kmalloc_fl_get(uint16_t size) {
+void *_kmalloc_fl_get(uint16_t size)
+{
     uint8_t index = _kmalloc_fl_size_to_index(size);
-    kmalloc_freelist_page_t* current = _kmalloc_freelist[index];
+    kmalloc_freelist_page_t *current = _kmalloc_freelist[index];
 
-    if (current == NULL || current->count == 0) return NULL;
+    if (current == NULL || current->count == 0)
+        return NULL;
 
-    void* addr = current->addresses[--current->count];
+    void *addr = current->addresses[--current->count];
 
-    if (current->count == 0) {
-        kpage_free((void*)current, 1);
+    if (current->count == 0)
+    {
+        kpage_free((void *)current, 1);
         _kmalloc_freelist[index] = NULL;
     }
 
     return addr;
 }
 
-// metadata block length is the base block length for the block, pretty useless. but not,
-void _kmalloc_setup_page_memory(void* page, kmalloc_entry_metadata_t* metadata) {
+void _kmalloc_setup_page_memory(void *page, kmalloc_entry_metadata_t *metadata)
+{
     uint16_t available_memory = PAGE_SIZE - sizeof(kmalloc_entry_metadata_t);
     uint16_t next_block_size = ke_get_block_length(metadata);
-    void* page_ptr = (void*)((uint8_t*)page + sizeof(kmalloc_entry_metadata_t));
+    void *page_ptr = (void *)((uint8_t *)page + sizeof(kmalloc_entry_metadata_t));
     metadata->free_count = 0;
     metadata->total_count = 0;
 
@@ -169,44 +192,50 @@ void _kmalloc_setup_page_memory(void* page, kmalloc_entry_metadata_t* metadata) 
     {
         ++metadata->total_count;
         _kmalloc_fl_add(next_block_size, page_ptr);
-        
-        page_ptr = (void*)((uint8_t*)page_ptr + next_block_size);
+
+        page_ptr = (void *)((uint8_t *)page_ptr + next_block_size);
         available_memory -= next_block_size;
 
-        if (available_memory - next_block_size < 0) {
+        if (available_memory - next_block_size < 0)
+        {
             next_block_size /= 2;
         }
 
-        if (next_block_size < 8) {
+        if (next_block_size < 8)
+        {
             break;
         }
     }
 
-    *(kmalloc_entry_metadata_t*)page = *metadata;
+    *(kmalloc_entry_metadata_t *)page = *metadata;
 }
 
-uint16_t _kmalloc_figure_blocksize(void* ptr, kmalloc_entry_metadata_t* metadata) {
-    void* page = get_4kb_aligned_address(ptr);
+uint16_t _kmalloc_figure_blocksize(void *ptr, kmalloc_entry_metadata_t *metadata)
+{
+    void *page = _get_4kb_aligned_address(ptr);
     uint16_t available_memory = PAGE_SIZE - sizeof(kmalloc_entry_metadata_t);
     uint16_t next_block_size = ke_get_block_length(metadata);
-    void* page_ptr = (void*)((uint8_t*)page + sizeof(kmalloc_entry_metadata_t));
+    void *page_ptr = (void *)((uint8_t *)page + sizeof(kmalloc_entry_metadata_t));
 
     while (available_memory - next_block_size > 0)
     {
-        if (ptr == page_ptr) {
+        if (ptr == page_ptr)
+        {
             return next_block_size;
         }
 
         ++metadata->total_count;
-        
-        page_ptr = (void*)((uint8_t*)page_ptr + next_block_size);
+
+        page_ptr = (void *)((uint8_t *)page_ptr + next_block_size);
         available_memory -= next_block_size;
 
-        if (available_memory - next_block_size < 0) {
+        if (available_memory - next_block_size < 0)
+        {
             next_block_size /= 2;
         }
 
-        if (next_block_size < 8) {
+        if (next_block_size < 8)
+        {
             break;
         }
     }
@@ -214,69 +243,89 @@ uint16_t _kmalloc_figure_blocksize(void* ptr, kmalloc_entry_metadata_t* metadata
     return 0;
 }
 
-/* API */
+/// API
 
-void* kmalloc(size_t len) {
+void *kmalloc(size_t len)
+{
     size_t mem_length = sizeof(kmalloc_entry_metadata_t) + len;
     kmalloc_entry_metadata_t metadata = {0};
 
-    if (mem_length > PAGE_SIZE / 2) {
+    if (mem_length > PAGE_SIZE / 2)
+    {
         uint32_t page_count = (mem_length + PAGE_SIZE - 1) / PAGE_SIZE;
 
-        void* vaddr = kpage_alloc(page_count);
-        if (!vaddr) {
+        void *vaddr = kpage_alloc(page_count);
+
+        if (!vaddr)
+        {
             return vaddr;
         }
 
-        if (page_count == 1) { 
+        if (page_count == 1)
+        {
             return vaddr;
         }
 
         ke_set_block_length(&metadata, page_count * PAGE_SIZE);
 
-        *(kmalloc_entry_metadata_t*)(vaddr) = metadata;
-        return (void*)((kmalloc_entry_metadata_t*)(vaddr) + 1);
+        *(kmalloc_entry_metadata_t *)(vaddr) = metadata;
+        return (void *)((kmalloc_entry_metadata_t *)(vaddr) + 1);
     }
 
-    if (len < MINIMUM_BLOCK_SIZE) len = MINIMUM_BLOCK_SIZE;
-    len = _kmalloc_fl_roundup_2power(len);
+    mem_length -= sizeof(kmalloc_entry_metadata_t);
 
-    ke_set_block_length(&metadata, len);
+    if (mem_length < KMALLOC_MINIMUM_BLOCK_SIZE)
+    {
+        mem_length = KMALLOC_MINIMUM_BLOCK_SIZE;
+    }
 
-    void* addr = _kmalloc_fl_get(len);
+    mem_length = _kmalloc_fl_roundup_2power(mem_length);
 
-    if (addr != NULL) {
+    ke_set_block_length(&metadata, mem_length);
+
+    void *addr = _kmalloc_fl_get(mem_length);
+
+    if (addr != NULL)
+    {
         --_ke_get_metadata(addr)->free_count;
         return addr;
     }
 
-    void* page = kpage_alloc(1);
+    void *page = kpage_alloc(1);
 
-    if(!page) return NULL;
+    if (!page)
+    {
+        return NULL;
+    }
 
-    _kmalloc_setup_page_memory(page, &metadata);  
-    
+    _kmalloc_setup_page_memory(page, &metadata);
+
     return kmalloc(len);
 }
 
-void kfree(void* vaddr) {
-    if (!vaddr) return;
-
-    if (get_4kb_aligned_address(vaddr) == vaddr) {
-        kpage_free((void*)vaddr, 1);
-    }
-
-    kmalloc_entry_metadata_t* metadata_ptr = _ke_get_metadata(vaddr);
-
-    uint64_t block_length = ke_get_block_length(metadata_ptr);
-
-    if (block_length >= PAGE_SIZE) {
-        kpage_free((void*)vaddr, block_length / PAGE_SIZE);
+void kfree(void *vaddr)
+{
+    if (!vaddr)
+    {
         return;
     }
 
-    // TODO if (metadata_ptr->free_count + 1) == metadata_ptr->total_count ---> free whole page
-    
+    if (_get_4kb_aligned_address(vaddr) == vaddr)
+    {
+        kpage_free((void *)vaddr, 1);
+        return;
+    }
+
+    kmalloc_entry_metadata_t *metadata_ptr = _ke_get_metadata(vaddr);
+
+    uint64_t block_length = ke_get_block_length(metadata_ptr);
+
+    if (block_length >= PAGE_SIZE)
+    {
+        kpage_free((void *)metadata_ptr, block_length / PAGE_SIZE);
+        return;
+    }
+
     _kmalloc_fl_add(_kmalloc_figure_blocksize(vaddr, metadata_ptr), vaddr);
     ++metadata_ptr->free_count;
 }

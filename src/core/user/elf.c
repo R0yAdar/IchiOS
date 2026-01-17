@@ -57,21 +57,13 @@ typedef struct
 
 #pragma pack(pop)
 
-typedef struct
-{
-    uint64_t vaddr;
-    uint64_t size;
-    uint64_t align;
-    BOOL dynamic;
-} elf_info;
-
-typedef struct
+struct elf_context
 {
     void *elf_raw;
     Phdr *phdrs;
     Ehdr *ehdr;
     elf_info info;
-} elf_context;
+};
 
 typedef struct
 {
@@ -90,20 +82,11 @@ typedef struct
     Elf64_Sxword r_addend;
 } Elf64_Rela;
 
-typedef enum
-{
-    ELF_NO_ERROR = 0,
-    ELF_INVALID_MAGIC,
-    ELF_UNSUPPORTED,
-    ELF_INVALID_DESTINATION,
-    ELF_INVALID_RELOCATION
-} ELF_ERRORS;
-
 elf_context *elf_open(file *elf_file, ELF_ERRORS *out_error)
 {
     void *buffer = kmalloc(elf_file->size);
 
-    if (fread(buffer, 1, elf_file->size, elf_file->file) != elf_file->size)
+    if ((uint64_t)fread(buffer, 1, elf_file->size, elf_file) != elf_file->size)
     {
         kfree(buffer);
         return NULL;
@@ -134,7 +117,7 @@ elf_context *elf_open(file *elf_file, ELF_ERRORS *out_error)
 
 void elf_get_layout(elf_context *ctx, elf_info *out_info)
 {
-    uint64_t min_v = (uintptr_t)-1;
+    uint64_t min_v = (uint64_t)-1;
     uint64_t max_v = 0;
     uint64_t align = 4096;
 
@@ -142,13 +125,16 @@ void elf_get_layout(elf_context *ctx, elf_info *out_info)
     {
         if (ctx->phdrs[i].type == PHDR_TYPE_PT_LOAD)
         {
-            if (ctx->phdrs[i].vaddr < min_v) {
+            if (ctx->phdrs[i].vaddr < min_v)
+            {
                 min_v = ctx->phdrs[i].vaddr;
             }
-            if (ctx->phdrs[i].vaddr + ctx->phdrs[i].memsz > max_v) {
+            if (ctx->phdrs[i].vaddr + ctx->phdrs[i].memsz > max_v)
+            {
                 max_v = ctx->phdrs[i].vaddr + ctx->phdrs[i].memsz;
             }
-            if (ctx->phdrs[i].align > align) {
+            if (ctx->phdrs[i].align > align)
+            {
                 align = ctx->phdrs[i].align;
             }
         }
@@ -158,21 +144,27 @@ void elf_get_layout(elf_context *ctx, elf_info *out_info)
     ctx->info = *out_info;
 }
 
-BOOL elf_relocate(void* base, Elf64_Dyn* relocation_table) {
+BOOL elf_relocate(elf_context *ctx, void *base, Elf64_Dyn *relocation_table)
+{
     Elf64_Rela *rela = 0;
     size_t sz = 0;
 
     for (Elf64_Dyn *entry = relocation_table; entry->d_tag != DT_NULL; entry++)
     {
-        if (entry->d_tag == DT_RELA){
-            rela = (Elf64_Rela *)(base + entry->d_un.d_ptr);
+        if (entry->d_tag == DT_RELA)
+        {
+            rela = (Elf64_Rela *)((uint64_t)base - ctx->info.vaddr + entry->d_un.d_ptr);
         }
-        if (entry->d_tag == DT_RELASZ) {
+        if (entry->d_tag == DT_RELASZ)
+        {
             sz = entry->d_un.d_val;
         }
     }
 
-    if (!rela) { return TRUE; }
+    if (!rela)
+    {
+        return TRUE;
+    }
 
     size_t count = sz / sizeof(Elf64_Rela);
 
@@ -188,13 +180,14 @@ BOOL elf_relocate(void* base, Elf64_Dyn* relocation_table) {
     return TRUE;
 }
 
-ELF_ERRORS elf_load_into(elf_context *ctx, void *dest, void** out_entry)
+ELF_ERRORS elf_load_into(elf_context *ctx, void *dest, void **out_entry)
 {
-    if (dest == NULL || ((uint64_t)dest != ctx->info.vaddr && ctx->info.dynamic == FALSE)) {
+    if (dest == NULL || ((uint64_t)dest != ctx->info.vaddr && ctx->info.dynamic == FALSE))
+    {
         return ELF_INVALID_DESTINATION;
     }
 
-    Elf64_Dyn* relocation_table = NULL;
+    Elf64_Dyn *relocation_table = NULL;
 
     for (uint32_t i = 0; i < ctx->ehdr->phnum; i++)
     {
@@ -203,7 +196,7 @@ ELF_ERRORS elf_load_into(elf_context *ctx, void *dest, void** out_entry)
         if (p->type == PHDR_TYPE_PT_LOAD)
         {
             void *seg_dest = (void *)((uint8_t *)dest - ctx->info.vaddr + p->vaddr);
-            
+
             memcpy(seg_dest, (uint8_t *)ctx->elf_raw + p->offset, p->filesz);
 
             if (p->memsz > p->filesz)
@@ -217,8 +210,10 @@ ELF_ERRORS elf_load_into(elf_context *ctx, void *dest, void** out_entry)
         }
     }
 
-    if (relocation_table) {
-        if (!elf_relocate(dest, relocation_table)) {
+    if (relocation_table)
+    {
+        if (!elf_relocate(ctx, dest, relocation_table))
+        {
             return ELF_INVALID_RELOCATION;
         }
     }
