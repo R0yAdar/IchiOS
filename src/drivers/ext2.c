@@ -5,7 +5,6 @@
 
 #include "vmm.h"
 #include "serial.h"
-#include "print.h"
 #include "math.h"
 #include "array.h"
 #include "cstring.h"
@@ -209,6 +208,8 @@ void* ext2_read_block(ext2_context* ctx, ext2_inode* inode, uint64_t block_numbe
             lba, 
             ctx->sectors_per_block);
     }
+
+    return NULL;
 }
 
 BOOL ext2_get_inode(ext2_context* ctx, uint32_t inode_nr, ext2_inode* out) {
@@ -233,7 +234,7 @@ BOOL ext2_get_inode(ext2_context* ctx, uint32_t inode_nr, ext2_inode* out) {
 }
 
 void ext2_release(ext2_context* ctx) {
-    io_release_buffer(&ctx->_buffer);
+    io_release_buffer(ctx->_buffer);
     kfree(ctx);
 }
 
@@ -340,9 +341,9 @@ uint64_t ext2_readfile(ext2_context* ctx, vnode* node, void* buffer, uint64_t le
 }
 
 vfs_ops ext2_ops = {
-    .open_root = ext2_open_root,
-    .open = ext2_open_entry,
-    .readdir = ext2_readdir,
-    .readfile = ext2_readfile,
-    .close = ext2_close
+    .open_root = (open_root_callback)ext2_open_root,
+    .open = (open_callback)ext2_open_entry,
+    .readdir = (readdir_callback)ext2_readdir,
+    .readfile = (readfile_callback)ext2_readfile,
+    .close = (close_callback)ext2_close
 };

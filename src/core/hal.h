@@ -3,15 +3,7 @@
 
 #include "stdint.h"
 
-/*
-    Typedefs
-*/
-
 typedef uint64_t gdt_desc;
-
-/*
-    Macros
-*/
 
 #define SEG_DESCTYPE(x) ((x) << 0x04)      // Descriptor type (0 for system, 1 for code/data)
 #define SEG_PRES(x) ((x) << 0x07)          // Present
@@ -54,10 +46,13 @@ typedef uint64_t gdt_desc;
                          SEG_LONG(1) | SEG_SIZE(0) | SEG_GRAN(1) | \
                          SEG_PRIV(3) | SEG_DATA_RDWR
 
-/*
-    Structures
-*/
-
+#define GDT_NULL_OFFSET 0
+#define GDT_CODE_PL0_OFFSET (1 * sizeof(gdt_desc))
+#define GDT_DATA_PL0_OFFSET (2 * sizeof(gdt_desc))
+#define GDT_CODE_PL3_OFFSET (3 * sizeof(gdt_desc))
+#define GDT_DATA_PL3_OFFSET (4 * sizeof(gdt_desc))
+#define GDT_TSS_OFFSET (5 * sizeof(gdt_desc))
+                         
 #pragma pack(push, 1)
 
 typedef struct
@@ -132,17 +127,6 @@ typedef struct
 } gdt_ptr;
 
 #pragma pack(pop)
-
-/*
-    Definitions
-*/
-
-#define GDT_NULL_OFFSET 0
-#define GDT_CODE_PL0_OFFSET (1 * sizeof(gdt_desc))
-#define GDT_DATA_PL0_OFFSET (2 * sizeof(gdt_desc))
-#define GDT_CODE_PL3_OFFSET (3 * sizeof(gdt_desc))
-#define GDT_DATA_PL3_OFFSET (4 * sizeof(gdt_desc))
-#define GDT_TSS_OFFSET (5 * sizeof(gdt_desc))
 
 idt_descriptor idt_create_descriptor(void (*handler)());
 

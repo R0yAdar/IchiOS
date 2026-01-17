@@ -5,7 +5,6 @@
 #include "multiboot.h"
 
 #define PMM_BLOCK_SIZE 4096
-#define RESERVED_KERNEL_MEMORY_BYTES 32768 // 32 (KB)
 
 typedef enum pmm_strategy_t {
     BITMAP

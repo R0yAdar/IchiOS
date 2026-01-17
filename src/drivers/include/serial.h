@@ -11,8 +11,6 @@ void qemu_logf(const char* format, ...);
 
 void qemu_log(const char* s);
 
-void qemu_log_int(uint64_t i);
-
 void qemu_dump(void* buffer, uint64_t size);
 
 void serial_init();

@@ -7,7 +7,6 @@
 #include "vga.h"
 #include "multiboot.h"
 #include "str.h"
-#include "print.h"
 #include "pmm.h"
 #include "err.h"
 #include "vmm.h"
@@ -72,10 +71,6 @@ void init_kernel_stack()
 	void *stack = kpage_alloc(KERNEL_STACK_SIZE);
 	void *stack_top = (void *)((char *)stack + KERNEL_STACK_SIZE * PAGE_SIZE);
 
-	print("Stack allocated from: ");
-	printx((uint64_t)stack_top);
-	print(" -> ");
-	printxln((uint64_t)stack);
 	_top_of_kernel_stack = stack_top;
 
 	switch_stack(stack_top, _rest_of_start);
@@ -97,7 +92,7 @@ void key_callback(uint8_t scancode, BOOL pressed)
 
 			buffer[0] = key;
 
-			print(buffer);
+			qemu_log(buffer);
 		}
 	}
 }

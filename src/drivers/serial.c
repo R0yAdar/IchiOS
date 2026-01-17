@@ -66,10 +66,6 @@ void qemu_log(const char* str) {
    write_serial('\n');
 }
 
-void qemu_log_int(uint64_t i)  {
-   qemu_log(int_to_str(i));
-}
-
 void serial_init() {
    port_outb(PORT_COM1 + 1, 0x00);
    port_outb(PORT_COM1 + 3, 0x80);

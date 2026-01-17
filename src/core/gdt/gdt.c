@@ -1,5 +1,4 @@
 #include "gdt.h"
-#include "print.h"
 #include "assembly.h"
 #include "../hal.h"
 

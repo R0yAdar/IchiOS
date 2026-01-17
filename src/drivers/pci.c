@@ -1,6 +1,5 @@
 #include "pci.h"
 #include "assembly.h"
-#include "print.h"
 
 #define PCI_COMMAND_OFFSET 0x04
 
@@ -25,7 +24,7 @@ void pci_write(uint8_t bus, uint8_t device, uint8_t function, uint8_t offset, ui
 }
 
 pci_device pci_get_device(uint16_t vendor, uint16_t device_id) {
-    for (uint8_t bus = 0; bus < 256; bus++) {
+    for (uint16_t bus = 0; bus < 256; bus++) {
         for (uint8_t dev = 0; dev < 32; dev++) {
             for (uint8_t func = 0; func < 8; func++) {
 
