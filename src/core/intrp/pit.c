@@ -3,6 +3,7 @@
 #include "pic.h"
 #include "vga.h"
 #include "str.h"
+#include "serial.h"
 #include "stdint.h"
 
 

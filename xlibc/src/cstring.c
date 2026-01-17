@@ -1,5 +1,23 @@
 #include "cstring.h"
 
+int memcmp(const uint8_t* left, const uint8_t* right, size_t len) {
+    for (size_t i = 0; i < len; i++) {
+        if (left[i] != right[i]) {
+            return left[i] - right[i];
+        }
+    }
+    
+    return 0;
+}
+
+void* memcpy(void* dest, void* src, uint64_t count) {
+    for(uint64_t i = 0; i < count; ++i) {
+        *((char*)(dest) + i) = *((char*)(src) + i);
+    }
+
+    return dest;
+}
+
 void* memset(void* dest, uint8_t value, uint64_t count) {
     for(uint64_t i = 0; i < count; ++i) {
         *((char*)(dest) + i) = value;
