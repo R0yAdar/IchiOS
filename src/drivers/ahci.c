@@ -272,8 +272,7 @@ BOOL ahci_write(uint64_t lba, uint32_t sector_count, void* phys_buffer)
 }
 
 BOOL ahci_init() {
-    pci_device partial = pci_get_by_class(MASS_STORAGE, PCI_SATA_SUBCLASS, PCI_AHCI_PROGIF);
-    _device = pci_get_device(partial.vendor_id, partial.device_id);
+    _device = pci_get_by_class(MASS_STORAGE, PCI_SATA_SUBCLASS, PCI_AHCI_PROGIF);
 	
 	pci_enable_mmio(&_device);
 	pci_enable_mastering(&_device);

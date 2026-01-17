@@ -29,7 +29,7 @@ void* kpage_alloc_dma(size_t page_count, void** out_phys_address) {
 void kpage_free_dma(size_t page_count, void* vaddr, void* phys) {
     if (!phys || !vaddr) return;
 
-    if (!vmm_is_mmio(vmm_get_global_context(), vaddr, phys)) return;
+    if (!vmm_is_mmio(vaddr, phys)) return;
 
     pmm_free_blocks(phys, page_count);
 

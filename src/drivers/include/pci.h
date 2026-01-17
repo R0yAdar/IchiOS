@@ -5,6 +5,9 @@
 
 #define PCI_CONFIG_ADDR_PORT 0xCF8
 #define PCI_CONFIG_DATA_PORT 0xCFC
+#define PCI_COMMAND_MEMORY (1 << 1)
+#define PCI_COMMAND_MASTER (1 << 2)
+#define PCI_COMMAND_INT_DISABLE (1 << 10)
 
 typedef enum {
     OLD = 0x0,
@@ -48,10 +51,6 @@ typedef struct {
 pci_device pci_get_device(uint16_t vendor, uint16_t device);
 
 pci_device pci_get_by_class(uint8_t class_code, uint8_t subclass, uint8_t prog_if);
-
-#define PCI_COMMAND_MEMORY (1 << 1)
-#define PCI_COMMAND_MASTER (1 << 2)
-#define PCI_COMMAND_INT_DISABLE (1 << 10)
 
 void pci_enable_mmio(pci_device* desc);
 
