@@ -1,10 +1,10 @@
 global reloadSegments
 reloadSegments:
    push 0x08
-   lea rax, [rel .reload_CS]
+   lea rax, [rel .reloadCS]
    push rax
    retfq
-.reload_CS:
+.reloadCS:
    mov ax, 0x10 ; 0x10 = data segment
    mov ds, ax
    mov es, ax

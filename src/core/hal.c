@@ -1,18 +1,25 @@
 #include "hal.h"
 
-idt_descriptor _idt_create_descriptor(void (*handler)(), uint8_t dpl)
-{
-    const uint8_t type = 0xE;
+#define IDT_TYPE_TRAP 0xF
+#define IDT_TYPE_INTERRUPT 0xE
+#define DPL_KERNEL 0
+#define DPL_USER 3
+#define PRESENT 1
+#define NO_IST 0
+#define TSS_AVAILABLE 0x9
+#define TSS_GRANULARITY_BYTES 0
 
+idt_descriptor _idt_create_descriptor(void (*handler)(), uint8_t type, uint8_t dpl)
+{
     idt_descriptor desc;
 
-    desc.segment_selector = 0x8;
+    desc.segment_selector = GDT_CODE_PL0_OFFSET;
 
-    uint8_t flags = (1 << 7) | ((dpl & 3) << 5) | (type);
+    uint8_t flags = (PRESENT << 7) | ((dpl & 3) << 5) | (type);
 
     desc.flags = flags;
 
-    desc.ist = 0;
+    desc.ist = NO_IST;
 
     desc.offset_low16 = (uint64_t)handler & 0xffff;
     desc.offset_upper16 = ((uint64_t)handler >> 16) & 0xffff;
@@ -25,12 +32,12 @@ idt_descriptor _idt_create_descriptor(void (*handler)(), uint8_t dpl)
 
 idt_descriptor idt_create_descriptor(void (*handler)())
 {
-    return _idt_create_descriptor(handler, 0);
+    return _idt_create_descriptor(handler, IDT_TYPE_INTERRUPT, DPL_KERNEL);
 }
 
 idt_descriptor idt_create_userland_descriptor(void (*handler)())
 {
-    return _idt_create_descriptor(handler, 3);
+    return _idt_create_descriptor(handler, IDT_TYPE_TRAP, DPL_USER);
 }
 
 gdt_desc gdt_create_descriptor(uint32_t base, uint32_t limit, uint16_t flag)
@@ -64,12 +71,12 @@ gdt_tss_descriptor gdt_create_tss_descriptor(uint64_t tss_address, uint16_t tss_
     descriptor.base_high = (uint8_t)((tss_address >> 24) & 0xFF);
     descriptor.base_upper = (uint32_t)(tss_address >> 32);
 
-    descriptor.type = 0x9;
+    descriptor.type = TSS_AVAILABLE;
     descriptor.s = 0;
-    descriptor.dpl = 0;
-    descriptor.p = 1;
+    descriptor.dpl = DPL_KERNEL;
+    descriptor.p = PRESENT;
 
-    descriptor.g = 0;
+    descriptor.g = TSS_GRANULARITY_BYTES;
     descriptor.db = 0;
     descriptor.l = 0;
     descriptor.avl = 0;

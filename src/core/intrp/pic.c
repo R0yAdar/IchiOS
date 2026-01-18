@@ -38,6 +38,6 @@ void init_pic() {
     uint8_t pic1_enabled_irqs = PIC1_SYSTEM_TIMER | PIC1_KEYBOARD_CONTROLLER;
     port_outb(PIC1_DATA_PORT, (~pic1_enabled_irqs));
 
-    uint8_t pic2_enabled_irqs = 0xFF;
-    port_outb(PIC2_DATA_PORT, pic2_enabled_irqs);
+    uint8_t pic2_enabled_irqs = 0;
+    port_outb(PIC2_DATA_PORT, (~pic2_enabled_irqs));
 }

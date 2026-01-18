@@ -6,14 +6,14 @@
 #include "serial.h"
 #include "stdint.h"
 
-
 unsigned volatile long long current_time = 0;
 unsigned volatile long long current_time_ms = 0;
 unsigned volatile long long current_char = 0;
 
-void init_pit() {
+void init_pit()
+{
     uint32_t frequency = 20;
-    
+
     uint16_t divisor = (PIT_OSCILLATOR_SIGNAL_HZ / frequency);
 
     port_outb(PIT_COMMAND_PORT, 0x36);
@@ -21,16 +21,22 @@ void init_pit() {
     port_outb(PIT_CHANNEL0_PORT, (divisor >> 8));
 }
 
-void pit_irq_handler() {
+void pit_irq_handler()
+{
     current_time_ms += 1000 / 20;
 }
 
-void sleep(uint64_t ms) {
-    sti();
+uint64_t get_current_time_ms()
+{
+    return current_time_ms;
+}
+
+void sleep(uint64_t ms)
+{
     uint64_t end_time = current_time_ms + ms;
 
-    while (current_time_ms < end_time) {
+    while (current_time_ms < end_time)
+    {
         hlt();
     }
-    cli();
 }

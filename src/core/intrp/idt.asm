@@ -28,7 +28,6 @@ align 16
 %macro define_isr_handler 2
     global %1
     %1:
-    cli
 
     pushall
 
@@ -41,7 +40,6 @@ align 16
     call %2
 
     popall
-    sti
 
     iretq
 %endmacro
@@ -49,7 +47,6 @@ align 16
 %macro define_irq_handler 2
     global %1
     %1:
-    cli
 
     pushall
 
@@ -63,7 +60,6 @@ align 16
     out 0x20, al
 
     popall
-    sti
 
     iretq
 %endmacro
@@ -71,7 +67,6 @@ align 16
 %macro define_exception_handler 3
     global %1
     %1:
-    cli
 
     mov rax, %3
 
@@ -86,7 +81,6 @@ align 16
     call %2
 
     popall
-    sti
 
     iretq
 %endmacro

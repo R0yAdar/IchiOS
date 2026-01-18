@@ -31,6 +31,8 @@ void switch_stack(void* new_stack, void (*func)(void));
 
 void load_gdtr(void* gdtr);
 
+void load_task_register();
+
 uint8_t port_inb(uint16_t port);
 
 void port_outb(uint16_t port, uint8_t data);
