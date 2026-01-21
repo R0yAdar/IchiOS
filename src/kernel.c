@@ -73,7 +73,9 @@ void init_kernel_stack()
 	void *stack_top = (void *)((char *)stack + KERNEL_STACK_SIZE * PAGE_SIZE);
 
 	_top_of_kernel_stack = stack_top;
-
+	
+	
+	qemu_logf("Stack top: %x", stack_top);
 	switch_stack(stack_top, _rest_of_start);
 }
 
@@ -160,7 +162,6 @@ void _start_kernel(multiboot_info *info)
 
 void _rest_of_start()
 {
-	qemu_log("Ichi kernel reallocated stack...");
 	_tss = create_tss_segment(_top_of_kernel_stack);
 	init_gdt(&_tss, sizeof(tss));
 	sti();

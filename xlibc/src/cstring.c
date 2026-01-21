@@ -26,7 +26,7 @@ void* memset(void* dest, uint8_t value, uint64_t count) {
     return dest;
 }
 
-int number_as_string(unsigned long long value, char* buffer, int base) {
+int number_as_string(uint64_t value, char* buffer, int base) {
     uint8_t pos = 0;
     uint8_t len;
 
@@ -87,14 +87,14 @@ int vsprintf(char* s, const char* format, va_list arg) {
             }
             else if (format[0] == 'd')
             {
-                int number = va_arg(arg, int);
+                uint64_t number = va_arg(arg, int64_t);
                 s += number_as_string(number, s, 10);
 
                 ++format;
             }
             else if (format[0] == 'x')
             {
-                int number = va_arg(arg, int);
+                uint64_t number = va_arg(arg, uint64_t);
                 s += number_as_string(number, s, 16);
 
                 ++format;

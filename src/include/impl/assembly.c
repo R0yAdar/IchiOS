@@ -34,23 +34,6 @@ void hlt()
     asm volatile("hlt" ::: "memory");
 }
 
-void set_rsp(void *stack_top)
-{
-    asm volatile(
-        "mov %0, %%rsp"
-        : : "r"(stack_top)
-        : "memory");
-}
-
-void *get_rsp()
-{
-    void *rsp;
-    asm volatile(
-        "mov %%rsp, %0"
-        : "=r"(rsp));
-    return rsp;
-}
-
 void switch_stack(void *new_stack, void (*func)(void))
 {
     asm volatile(
@@ -158,4 +141,13 @@ uint64_t read_cr2()
         :);
 
     return cr2;
+}
+
+__attribute__((naked, noreturn)) void iretq()
+{
+    asm volatile(
+        "iretq"
+        :
+        :   
+        : "memory");
 }

@@ -1,3 +1,6 @@
+extern scheduler_check
+extern scheduler_switch
+
 [bits 64]
 align 16
 
@@ -14,6 +17,11 @@ align 16
 %endmacro
 
 %macro popall 0
+    mov rdi, rsp
+    call scheduler_check
+
+    cmp rax, 0
+
     pop r11
     pop r10
     pop r9
@@ -23,6 +31,15 @@ align 16
     pop rdx
     pop rcx
     pop rax
+
+    jz %%popall_end
+    
+    add rsp, 0x28 ; rip, cs, rflags, rsp, ss
+
+    jmp scheduler_switch
+
+    %%popall_end:
+    
 %endmacro
 
 %macro define_isr_handler 2

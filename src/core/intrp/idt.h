@@ -2,6 +2,7 @@
 #define IDT_H
 
 #include "stdint.h"
+#define ISR_CALL_STACK_MAGIC 0x7A7A7A7A7A7A7A7A
 
 int init_idt();
 

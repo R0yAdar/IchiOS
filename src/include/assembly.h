@@ -23,10 +23,6 @@ void sti();
 
 void hlt();
 
-void set_rsp(void* stack_top);
-
-void* get_rsp();
-
 void switch_stack(void* new_stack, void (*func)(void));
 
 void load_gdtr(void* gdtr);
@@ -52,5 +48,7 @@ void flush_tlb_all();
 void jump_to_userland(uint64_t stack_addr, uint64_t code_addr);
 
 uint64_t read_cr2();
+
+void iretq();
 
 #endif

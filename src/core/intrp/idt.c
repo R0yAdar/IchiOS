@@ -68,7 +68,7 @@ void general_exception_handler(uint64_t exception_no, void* ptr) {
     (void)ptr;
 }
 
-void syscall_handler(uint64_t syscall_no, void* ptr) {
+void syscall_handler(uint64_t syscall_no, void* ptr) {    
     if (syscall_no == 0) {
         qemu_log("Hello from syscall_handler");
     } else if (syscall_no == 1) {
