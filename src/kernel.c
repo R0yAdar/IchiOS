@@ -3,6 +3,7 @@
 #include "core/intrp/pit.h"
 #include "core/user/elf.h"
 #include "core/user/process.h"
+#include "core/user/scheduler.h"
 #include "ahci.h"
 #include "stdint.h"
 #include "vga.h"
@@ -243,9 +244,18 @@ void _rest_of_start()
 		qemu_log("Failed to open exe file");
 	}
 	else {
+		process_ctx* p1 = process_create();
+		process_init_idle(p1);
+		scheduler_add_process(p1);
+
 		process_ctx* p = process_create();
 		process_exec(p, exe);
+		scheduler_add_process(p);
 	}
+	qemu_log("Transferring control to scheduler");
+	scheduler_transfer_ctrl();
+	
+	qemu_log("BYE BYE");
 
 	while (1)
 	{

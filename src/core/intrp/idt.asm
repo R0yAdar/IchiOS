@@ -5,6 +5,13 @@ extern scheduler_switch
 align 16
 
 %macro pushall 0
+    push r15
+    push r14
+    push r13
+    push r12
+    push rbx
+    push rbp
+
     push rax
     push rcx
     push rdx
@@ -32,8 +39,15 @@ align 16
     pop rcx
     pop rax
 
+    pop rbp
+    pop rbx
+    pop r12
+    pop r13
+    pop r14
+    pop r15
+
     jz %%popall_end
-    
+
     add rsp, 0x28 ; rip, cs, rflags, rsp, ss
 
     jmp scheduler_switch

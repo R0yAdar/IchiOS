@@ -9,6 +9,7 @@
 #define VMM_RAM_DIRECT_MAPPING_OFFSET 0xffff800000000000
 #define VMM_RAM_MMIO_MAPPING_OFFSET 0xffff900000000000
 #define VMM_ALIGN_4KB(ptr) ((void*)(((uint64_t)(ptr) + 4095) & (~0xFFF)))
+#define IS_HIGHER_HALF(addr) (((uint64_t)(addr) >> 47) & 1)
 
 typedef struct pagetable_context pagetable_context;
 
