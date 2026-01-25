@@ -64,7 +64,6 @@ void scheduler_add_process(process_ctx *ctx)
     uint16_t i = 0;
     while (processes[++i]);
     processes[i] = ctx;
-    qemu_logf("Added process %x to index %d", ctx, i);
 }
 
 __attribute__((naked, noreturn)) void scheduler_transfer_ctrl() {

@@ -1,5 +1,6 @@
 #include "vmm.h"
 #include "pmm.h"
+#include "serial.h"
 
 /// KMALLOC
 
@@ -103,7 +104,7 @@ void ke_set_block_length(kmalloc_entry_metadata_t *metadata, uint64_t length)
 {
     if (length <= (PAGE_SIZE / 2))
     {
-        metadata->compressed_length = _kmalloc_log2((uint16_t)length) - 3; // 8 (2^3) is the minimum
+        metadata->compressed_length = _kmalloc_fl_size_to_index((uint16_t)length);
     }
     else
     {
@@ -131,8 +132,11 @@ kmalloc_freelist_page_t *_kmalloc_freelist[9] = {0};
 kmalloc_freelist_page_t *kmalloc_fl_page_create()
 {
     kmalloc_freelist_page_t *p = (kmalloc_freelist_page_t *)kpage_alloc(1);
+    if (!p) return NULL;
+
     p->count = 0;
     p->next = NULL;
+
     for (size_t i = 0; i < KMALLOC_FREELIST_PAGE_MAX_ADDR; i++)
     {
         p->addresses[i] = NULL;
@@ -171,10 +175,10 @@ void *_kmalloc_fl_get(uint16_t size)
 
     void *addr = current->addresses[--current->count];
 
-    if (current->count == 0)
+    if (current->count == 0 && current->next != NULL)
     {
+        _kmalloc_freelist[index] = current->next;
         kpage_free((void *)current, 1);
-        _kmalloc_freelist[index] = NULL;
     }
 
     return addr;
@@ -191,12 +195,13 @@ void _kmalloc_setup_page_memory(void *page, kmalloc_entry_metadata_t *metadata)
     while (available_memory - next_block_size > 0)
     {
         ++metadata->total_count;
+        ++metadata->free_count;
         _kmalloc_fl_add(next_block_size, page_ptr);
 
         page_ptr = (void *)((uint8_t *)page_ptr + next_block_size);
         available_memory -= next_block_size;
 
-        if (available_memory - next_block_size < 0)
+        while (available_memory < next_block_size && next_block_size > 8)
         {
             next_block_size /= 2;
         }
@@ -224,12 +229,10 @@ uint16_t _kmalloc_figure_blocksize(void *ptr, kmalloc_entry_metadata_t *metadata
             return next_block_size;
         }
 
-        ++metadata->total_count;
-
         page_ptr = (void *)((uint8_t *)page_ptr + next_block_size);
         available_memory -= next_block_size;
 
-        if (available_memory - next_block_size < 0)
+        while (available_memory < next_block_size && next_block_size > 8)
         {
             next_block_size /= 2;
         }
@@ -247,6 +250,9 @@ uint16_t _kmalloc_figure_blocksize(void *ptr, kmalloc_entry_metadata_t *metadata
 
 void *kmalloc(size_t len)
 {
+    if (len == 0)
+        return NULL;
+
     size_t mem_length = sizeof(kmalloc_entry_metadata_t) + len;
     kmalloc_entry_metadata_t metadata = {0};
 
@@ -254,21 +260,22 @@ void *kmalloc(size_t len)
     {
         uint32_t page_count = (mem_length + PAGE_SIZE - 1) / PAGE_SIZE;
 
+        if (page_count == 1 || len <= PAGE_SIZE)
+        {
+            return kpage_alloc(1);
+        }
+
         void *vaddr = kpage_alloc(page_count);
 
         if (!vaddr)
         {
-            return vaddr;
-        }
-
-        if (page_count == 1)
-        {
-            return vaddr;
+            return NULL;
         }
 
         ke_set_block_length(&metadata, page_count * PAGE_SIZE);
 
         *(kmalloc_entry_metadata_t *)(vaddr) = metadata;
+        qemu_logf("Giving 0x%x for %d", (kmalloc_entry_metadata_t *)(vaddr) + 1, len);
         return (void *)((kmalloc_entry_metadata_t *)(vaddr) + 1);
     }
 
@@ -288,6 +295,7 @@ void *kmalloc(size_t len)
     if (addr != NULL)
     {
         --_ke_get_metadata(addr)->free_count;
+        qemu_logf("Giving 0x%x for %d", (kmalloc_entry_metadata_t *)(addr) + 1, len);
         return addr;
     }
 

@@ -19,7 +19,8 @@ process_ctx *process_create()
 {
     qemu_logf("Size of ctx: %d", sizeof(process_ctx));
 
-    process_ctx *ctx = kpage_alloc(1); // kmalloc failes fix it!
+    process_ctx *ctx = kmalloc(sizeof(process_ctx)); // kpage_alloc(1); // kmalloc failes fix it!
+    qemu_logf("Allocated process ctx at %x", ctx);
     if (!ctx)
         return NULL;
 
