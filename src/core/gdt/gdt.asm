@@ -1,5 +1,5 @@
-global reloadSegments
-reloadSegments:
+global gdtReloadSegments
+gdtReloadSegments:
    push 0x08
    lea rax, [rel .reloadCS]
    push rax

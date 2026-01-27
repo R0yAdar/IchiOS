@@ -150,7 +150,7 @@ void _start_kernel(multiboot_info *info)
 
 	qemu_log("Ichi kernel enabled KEYBOARD...");
 
-	init_gdt(0, 0);
+	gdt_init(0, 0);
 
 	qemu_log("Ichi kernel setup GDT...");
 
@@ -164,7 +164,7 @@ void _start_kernel(multiboot_info *info)
 void _rest_of_start()
 {
 	_tss = create_tss_segment(_top_of_kernel_stack);
-	init_gdt(&_tss, sizeof(tss));
+	gdt_init(&_tss, sizeof(tss));
 	sti();
 
 	qemu_log("Set hardware interrupts (sti)");

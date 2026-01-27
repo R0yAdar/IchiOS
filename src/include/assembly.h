@@ -25,9 +25,9 @@ void hlt();
 
 void switch_stack(void* new_stack, void (*func)(void));
 
-void load_gdtr(void* gdtr);
+void gdtr_load(void* gdtr);
 
-void load_task_register();
+void ltr();
 
 uint8_t port_inb(uint16_t port);
 

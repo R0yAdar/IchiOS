@@ -4,8 +4,6 @@
 #include "assembly.h"
 #include "cstring.h"
 
-uint8_t ELF_MAGIC[4] = {0x7F, 0x45, 0x4C, 0x46};
-
 #define PHDR_TYPE_PT_LOAD 1
 #define PHDR_TYPE_PT_DYNAMIC 2
 #define EHDR_TYPE_REL 1
@@ -25,6 +23,8 @@ typedef int32_t Elf64_Sword;
 typedef uint64_t Elf64_Xword;
 typedef int64_t Elf64_Sxword;
 typedef uint8_t Elf64_UnsignedChar;
+
+uint8_t ELF_MAGIC[4] = {0x7F, 0x45, 0x4C, 0x46};
 
 #pragma pack(push, 1)
 

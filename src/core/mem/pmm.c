@@ -11,7 +11,7 @@
 #define BITMAP_CELL_BIT_SIZE 32
 #define PAGE_SIZE 4096
 
-uint32_t bitmap[512];
+uint32_t _bitmap[512];
 pmm_context _context;
 
 uint32_t set_bit(uint32_t value, uint32_t index)
@@ -65,7 +65,7 @@ int pmm_init(pmm_context *context)
 {
     _context = *context;
 
-    memset(&bitmap, BLOCK_STATUS_8CHUNK_USED, sizeof(bitmap));
+    memset(&_bitmap, BLOCK_STATUS_8CHUNK_USED, sizeof(_bitmap));
 
     for (uint32_t i = 0; i < context->regions_count; i++)
     {
@@ -76,29 +76,29 @@ int pmm_init(pmm_context *context)
             uint32_t index_in_bitmap = (current->address / 8) / 4096;
             uint32_t count_in_bitmap = current->size / 4096 / 8;
 
-            memset(&bitmap[index_in_bitmap], BLOCK_STATUS_FREE, count_in_bitmap);
+            memset(&_bitmap[index_in_bitmap], BLOCK_STATUS_FREE, count_in_bitmap);
         }
     }
 
-    memset(&bitmap, BLOCK_STATUS_8CHUNK_USED, ((context->kernel_ram_size + 4095) / 4096 + 7) / 8);
+    memset(&_bitmap, BLOCK_STATUS_8CHUNK_USED, ((context->kernel_ram_size + 4095) / 4096 + 7) / 8);
 
     return 0;
 }
 
 void *pmm_alloc()
 {
-    for (uint64_t i = 0; i < LENGTH(bitmap); ++i)
+    for (uint64_t i = 0; i < LENGTH(_bitmap); ++i)
     {
-        if (bitmap[i] != BLOCK_STATUS_CHUNK_USED)
+        if (_bitmap[i] != BLOCK_STATUS_CHUNK_USED)
         {
-            int32_t free_bit_index = find_first_free_bit(bitmap[i]);
+            int32_t free_bit_index = find_first_free_bit(_bitmap[i]);
 
             if (free_bit_index == -1)
             {
                 break;
             }
 
-            bitmap[i] = set_bit(bitmap[i], free_bit_index);
+            _bitmap[i] = set_bit(_bitmap[i], free_bit_index);
             return (void *)((i * BITMAP_CELL_BIT_SIZE + free_bit_index) * PAGE_SIZE);
         }
     }
@@ -111,12 +111,12 @@ void pmm_free(void *block)
 {
     uint32_t index_in_bitmap = (uint64_t)block / PMM_BLOCK_SIZE / BITMAP_CELL_BIT_SIZE;
     uint32_t bit_index = ((uint64_t)block / PMM_BLOCK_SIZE) % BITMAP_CELL_BIT_SIZE;
-    bitmap[index_in_bitmap] = free_bit(bitmap[index_in_bitmap], bit_index);
+    _bitmap[index_in_bitmap] = free_bit(_bitmap[index_in_bitmap], bit_index);
 }
 
 void *pmm_alloc_blocks(uint32_t count)
 {
-    uint64_t index = find_first_free_bits(bitmap, LENGTH(bitmap), count);
+    uint64_t index = find_first_free_bits(_bitmap, LENGTH(_bitmap), count);
 
     if (index == (uint64_t)-1)
     {
@@ -132,7 +132,7 @@ void *pmm_alloc_blocks(uint32_t count)
         cell_index = index / BITMAP_CELL_BIT_SIZE;
         bit_index = index % BITMAP_CELL_BIT_SIZE;
 
-        bitmap[cell_index] = set_bit(bitmap[cell_index], bit_index);
+        _bitmap[cell_index] = set_bit(_bitmap[cell_index], bit_index);
     }
 
     return (void *)((index - count) * PMM_BLOCK_SIZE);
@@ -149,7 +149,7 @@ void pmm_free_blocks(void *start, uint32_t count)
         cell_index = index / BITMAP_CELL_BIT_SIZE;
         bit_index = index % BITMAP_CELL_BIT_SIZE;
 
-        bitmap[cell_index] = free_bit(bitmap[cell_index], bit_index);
+        _bitmap[cell_index] = free_bit(_bitmap[cell_index], bit_index);
     }
 }
 

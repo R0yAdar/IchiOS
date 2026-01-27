@@ -44,7 +44,7 @@ void switch_stack(void *new_stack, void (*func)(void))
         : "memory");
 }
 
-void load_gdtr(void *gdtr)
+void gdtr_load(void *gdtr)
 {
     asm volatile(
         "lgdt (%0)"
@@ -53,7 +53,7 @@ void load_gdtr(void *gdtr)
         : "memory");
 }
 
-void load_task_register()
+void ltr()
 {
     asm volatile("ltr %%ax" ::"a"(0x28));
 }

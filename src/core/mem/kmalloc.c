@@ -8,6 +8,7 @@
 
 #define KMALLOC_SMALL_BLOCK_MAX_SIZE 2048
 #define KMALLOC_MINIMUM_BLOCK_SIZE 8
+#define KMALLOC_FIXED_BLOCK_BRACKETS_COUNT 9
 
 /// Structures
 
@@ -34,17 +35,17 @@ typedef struct kmalloc_freelist_page
 /// Utility functions
 
 // Local addresses are from 0xffff800000000000 onwards
-uint32_t _km_compress_4kb_aligned_local_address(void *ptr)
+uint32_t km_compress_4kb_aligned_local_address(void *ptr)
 {
     return (uint32_t)((uint64_t)ptr >> 12);
 }
 
-void *_km_decompress_4kb_aligned_local_address(uint32_t caddr)
+void *km_decompress_4kb_aligned_local_address(uint32_t caddr)
 {
     return (void *)((((uint64_t)caddr) << 12) | VMM_RAM_DIRECT_MAPPING_OFFSET);
 }
 
-uint16_t _kmalloc_fl_roundup_2power(uint16_t length)
+uint16_t km_fl_roundup_2power(uint16_t length)
 {
     // Assert length <= 0x800
     uint16_t mask = 0x800;
@@ -59,7 +60,7 @@ uint16_t _kmalloc_fl_roundup_2power(uint16_t length)
 }
 
 // Can optimize with tzbcnt on x86
-uint8_t _kmalloc_log2(uint16_t size)
+uint8_t km_log2(uint16_t size)
 {
     uint8_t zero_bits_count = 0;
 
@@ -73,12 +74,12 @@ uint8_t _kmalloc_log2(uint16_t size)
 }
 
 // The minimum size is 8, 0b1000 so index 3 should be zero
-uint8_t _kmalloc_fl_size_to_index(uint16_t size)
+uint8_t km_fl_size_to_index(uint16_t size)
 {
-    return _kmalloc_log2(size) - 3;
+    return km_log2(size) - 3;
 }
 
-void *_get_4kb_aligned_address(void *addr)
+void *km_4kb_aligned_address(void *addr)
 {
     return (void *)((uint64_t)addr & (~(0xFFF)));
 }
@@ -104,7 +105,7 @@ void ke_set_block_length(kmalloc_entry_metadata_t *metadata, uint64_t length)
 {
     if (length <= (PAGE_SIZE / 2))
     {
-        metadata->compressed_length = _kmalloc_fl_size_to_index((uint16_t)length);
+        metadata->compressed_length = km_fl_size_to_index((uint16_t)length);
     }
     else
     {
@@ -112,24 +113,16 @@ void ke_set_block_length(kmalloc_entry_metadata_t *metadata, uint64_t length)
     }
 }
 
-kmalloc_entry_metadata_t *_ke_get_metadata(void *addr)
+kmalloc_entry_metadata_t *ke_get_metadata(void *addr)
 {
-    return (kmalloc_entry_metadata_t *)_get_4kb_aligned_address(addr);
+    return (kmalloc_entry_metadata_t *)km_4kb_aligned_address(addr);
 }
 
-// Allocation Sizes (Total 9)
-// 8
-// 16
-// 32
-// 64
-// 128
-// 256
-// 512
-// 1024
-// 2048
-kmalloc_freelist_page_t *_kmalloc_freelist[9] = {0};
+/// Free-list (LEN=9, for each block-size)
 
-kmalloc_freelist_page_t *kmalloc_fl_page_create()
+kmalloc_freelist_page_t *_kmalloc_freelist[KMALLOC_FIXED_BLOCK_BRACKETS_COUNT] = {0};
+
+kmalloc_freelist_page_t *km_fl_page_create()
 {
     kmalloc_freelist_page_t *p = (kmalloc_freelist_page_t *)kpage_alloc(1);
     if (!p) return NULL;
@@ -145,18 +138,18 @@ kmalloc_freelist_page_t *kmalloc_fl_page_create()
     return p;
 }
 
-void _kmalloc_fl_add(uint16_t size, void *vaddr)
+void km_fl_add(uint16_t size, void *vaddr)
 {
-    uint8_t index = _kmalloc_fl_size_to_index(size);
+    uint8_t index = km_fl_size_to_index(size);
     kmalloc_freelist_page_t *current = _kmalloc_freelist[index];
 
     if (current == NULL)
     {
-        current = kmalloc_fl_page_create();
+        current = km_fl_page_create();
     }
     else if (current->count == KMALLOC_FREELIST_PAGE_MAX_ADDR)
     {
-        kmalloc_freelist_page_t *new_page = kmalloc_fl_page_create();
+        kmalloc_freelist_page_t *new_page = km_fl_page_create();
         new_page->next = current;
         current = new_page;
     }
@@ -165,9 +158,9 @@ void _kmalloc_fl_add(uint16_t size, void *vaddr)
     _kmalloc_freelist[index] = current;
 }
 
-void *_kmalloc_fl_get(uint16_t size)
+void *km_fl_get(uint16_t size)
 {
-    uint8_t index = _kmalloc_fl_size_to_index(size);
+    uint8_t index = km_fl_size_to_index(size);
     kmalloc_freelist_page_t *current = _kmalloc_freelist[index];
 
     if (current == NULL || current->count == 0)
@@ -184,7 +177,7 @@ void *_kmalloc_fl_get(uint16_t size)
     return addr;
 }
 
-void _kmalloc_setup_page_memory(void *page, kmalloc_entry_metadata_t *metadata)
+void km_setup_page_memory(void *page, kmalloc_entry_metadata_t *metadata)
 {
     uint16_t available_memory = PAGE_SIZE - sizeof(kmalloc_entry_metadata_t);
     uint16_t next_block_size = ke_get_block_length(metadata);
@@ -196,7 +189,7 @@ void _kmalloc_setup_page_memory(void *page, kmalloc_entry_metadata_t *metadata)
     {
         ++metadata->total_count;
         ++metadata->free_count;
-        _kmalloc_fl_add(next_block_size, page_ptr);
+        km_fl_add(next_block_size, page_ptr);
 
         page_ptr = (void *)((uint8_t *)page_ptr + next_block_size);
         available_memory -= next_block_size;
@@ -215,9 +208,9 @@ void _kmalloc_setup_page_memory(void *page, kmalloc_entry_metadata_t *metadata)
     *(kmalloc_entry_metadata_t *)page = *metadata;
 }
 
-uint16_t _kmalloc_figure_blocksize(void *ptr, kmalloc_entry_metadata_t *metadata)
+uint16_t km_figure_blocksize(void *ptr, kmalloc_entry_metadata_t *metadata)
 {
-    void *page = _get_4kb_aligned_address(ptr);
+    void *page = km_4kb_aligned_address(ptr);
     uint16_t available_memory = PAGE_SIZE - sizeof(kmalloc_entry_metadata_t);
     uint16_t next_block_size = ke_get_block_length(metadata);
     void *page_ptr = (void *)((uint8_t *)page + sizeof(kmalloc_entry_metadata_t));
@@ -286,15 +279,15 @@ void *kmalloc(size_t len)
         mem_length = KMALLOC_MINIMUM_BLOCK_SIZE;
     }
 
-    mem_length = _kmalloc_fl_roundup_2power(mem_length);
+    mem_length = km_fl_roundup_2power(mem_length);
 
     ke_set_block_length(&metadata, mem_length);
 
-    void *addr = _kmalloc_fl_get(mem_length);
+    void *addr = km_fl_get(mem_length);
 
     if (addr != NULL)
     {
-        --_ke_get_metadata(addr)->free_count;
+        --ke_get_metadata(addr)->free_count;
         qemu_logf("Giving 0x%x for %d", (kmalloc_entry_metadata_t *)(addr) + 1, len);
         return addr;
     }
@@ -306,7 +299,7 @@ void *kmalloc(size_t len)
         return NULL;
     }
 
-    _kmalloc_setup_page_memory(page, &metadata);
+    km_setup_page_memory(page, &metadata);
 
     return kmalloc(len);
 }
@@ -318,13 +311,13 @@ void kfree(void *vaddr)
         return;
     }
 
-    if (_get_4kb_aligned_address(vaddr) == vaddr)
+    if (km_4kb_aligned_address(vaddr) == vaddr)
     {
         kpage_free((void *)vaddr, 1);
         return;
     }
 
-    kmalloc_entry_metadata_t *metadata_ptr = _ke_get_metadata(vaddr);
+    kmalloc_entry_metadata_t *metadata_ptr = ke_get_metadata(vaddr);
 
     uint64_t block_length = ke_get_block_length(metadata_ptr);
 
@@ -334,6 +327,6 @@ void kfree(void *vaddr)
         return;
     }
 
-    _kmalloc_fl_add(_kmalloc_figure_blocksize(vaddr, metadata_ptr), vaddr);
+    km_fl_add(km_figure_blocksize(vaddr, metadata_ptr), vaddr);
     ++metadata_ptr->free_count;
 }
