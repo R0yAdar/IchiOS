@@ -18,7 +18,7 @@ uint64_t scheduler_check(uint64_t rsp)
     volatile stack_layout *stack = (stack_layout *)rsp;
 
     ++ticks;
-    if (ticks % 100 == 0) {
+    if (ticks % 10 == 0) {
         is_time_to_switch = TRUE;
     }
 

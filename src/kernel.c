@@ -4,6 +4,7 @@
 #include "core/user/elf.h"
 #include "core/user/process.h"
 #include "core/user/scheduler.h"
+#include "core/user/syscall.h"
 #include "ahci.h"
 #include "stdint.h"
 #include "vga.h"
@@ -253,6 +254,8 @@ void _rest_of_start()
 		scheduler_add_process(p);
 	}
 	qemu_log("Transferring control to scheduler");
+	
+	syscall_init(fb);
 	scheduler_transfer_ctrl();
 	
 	qemu_log("BYE BYE");
