@@ -5,7 +5,7 @@
 #include "serial.h"
 #include "../hal.h"
 
-char* exception_messages[] = {
+char* EXCEPTION_CODE_TO_NAME[] = {
     "Division by Zero",
     "Debug",
     "Non-Maskable Interrupt",
@@ -43,14 +43,9 @@ char* exception_messages[] = {
     "Reserved"
 };
 
-static idt_descriptor _idt[256];
+static idt_descriptor _idt[IDT_ENTRY_COUNT];
 
 static idtr _idtr;
-
-inline void syscall(uint64_t id, void* ptr)
-{
-    interrupt80(id, ptr);
-}
 
 void opaque_handler(uint64_t id, void* ptr) {
     qemu_logf("Opaque handler called (id=%d, ptr=0x%x)!!!", id, ptr);
@@ -59,7 +54,7 @@ void opaque_handler(uint64_t id, void* ptr) {
 void general_exception_handler(uint64_t exception_no, void* ptr) {
     uint64_t faulting_address = read_cr2();
 
-    qemu_logf("%s CR2: %x", exception_messages[exception_no], faulting_address);
+    qemu_logf("%s CR2: %x", EXCEPTION_CODE_TO_NAME[exception_no], faulting_address);
 
     while (1)
     {
@@ -68,72 +63,62 @@ void general_exception_handler(uint64_t exception_no, void* ptr) {
     (void)ptr;
 }
 
-void syscall_handler(uint64_t syscall_no, void* ptr) {    
-    if (syscall_no == 0) {
-        qemu_log("Hello from syscall_handler");
-    } else if (syscall_no == 1) {
-        sleep(1000);
-    } else if (syscall_no == 2) {
-        qemu_log(ptr);
-    }
-}
-
-void i86_install_ir(uint8_t index, idt_descriptor descriptor){
+void idt_install_handler(uint8_t index, idt_descriptor descriptor){
     _idt[index] = descriptor;
 }
 
-int init_idt(){
-    _idtr.limit = sizeof(idt_descriptor) * 256 - 1;
+int idt_init(){
+    _idtr.limit = sizeof(idt_descriptor) * IDT_ENTRY_COUNT - 1;
     _idtr.base = (uint64_t)&_idt[0];
 
-    i86_install_ir(0,  idt_create_descriptor(isr0_handler));
-    i86_install_ir(1,  idt_create_descriptor(isr1_handler));
-    i86_install_ir(2,  idt_create_descriptor(isr2_handler));
-    i86_install_ir(3,  idt_create_descriptor(isr3_handler));
-    i86_install_ir(4,  idt_create_descriptor(isr4_handler));
-    i86_install_ir(5,  idt_create_descriptor(isr5_handler));
-    i86_install_ir(6,  idt_create_descriptor(isr6_handler));
-    i86_install_ir(7,  idt_create_descriptor(isr7_handler));
-    i86_install_ir(8,  idt_create_descriptor(isr8_handler));
-    i86_install_ir(9,  idt_create_descriptor(isr9_handler));
-    i86_install_ir(10, idt_create_descriptor(isr10_handler));
-    i86_install_ir(11, idt_create_descriptor(isr11_handler));
-    i86_install_ir(12, idt_create_descriptor(isr12_handler));
-    i86_install_ir(13, idt_create_descriptor(isr13_handler));
-    i86_install_ir(14, idt_create_descriptor(isr14_handler));
-    i86_install_ir(15, idt_create_descriptor(isr15_handler));
-    i86_install_ir(16, idt_create_descriptor(isr16_handler));
-    i86_install_ir(17, idt_create_descriptor(isr17_handler));
-    i86_install_ir(18, idt_create_descriptor(isr18_handler));
-    i86_install_ir(19, idt_create_descriptor(isr19_handler));
-    i86_install_ir(20, idt_create_descriptor(isr20_handler));
-    i86_install_ir(21, idt_create_descriptor(isr21_handler));
-    i86_install_ir(22, idt_create_descriptor(isr22_handler));
-    i86_install_ir(23, idt_create_descriptor(isr23_handler));
-    i86_install_ir(24, idt_create_descriptor(isr24_handler));
-    i86_install_ir(25, idt_create_descriptor(isr25_handler));
-    i86_install_ir(26, idt_create_descriptor(isr26_handler));
-    i86_install_ir(27, idt_create_descriptor(isr27_handler));
-    i86_install_ir(28, idt_create_descriptor(isr28_handler));
-    i86_install_ir(29, idt_create_descriptor(isr29_handler));
-    i86_install_ir(30, idt_create_descriptor(isr30_handler));
-    i86_install_ir(31, idt_create_descriptor(isr31_handler));
+    idt_install_handler(0,  idt_create_descriptor(isr0_handler));
+    idt_install_handler(1,  idt_create_descriptor(isr1_handler));
+    idt_install_handler(2,  idt_create_descriptor(isr2_handler));
+    idt_install_handler(3,  idt_create_descriptor(isr3_handler));
+    idt_install_handler(4,  idt_create_descriptor(isr4_handler));
+    idt_install_handler(5,  idt_create_descriptor(isr5_handler));
+    idt_install_handler(6,  idt_create_descriptor(isr6_handler));
+    idt_install_handler(7,  idt_create_descriptor(isr7_handler));
+    idt_install_handler(8,  idt_create_descriptor(isr8_handler));
+    idt_install_handler(9,  idt_create_descriptor(isr9_handler));
+    idt_install_handler(10, idt_create_descriptor(isr10_handler));
+    idt_install_handler(11, idt_create_descriptor(isr11_handler));
+    idt_install_handler(12, idt_create_descriptor(isr12_handler));
+    idt_install_handler(13, idt_create_descriptor(isr13_handler));
+    idt_install_handler(14, idt_create_descriptor(isr14_handler));
+    idt_install_handler(15, idt_create_descriptor(isr15_handler));
+    idt_install_handler(16, idt_create_descriptor(isr16_handler));
+    idt_install_handler(17, idt_create_descriptor(isr17_handler));
+    idt_install_handler(18, idt_create_descriptor(isr18_handler));
+    idt_install_handler(19, idt_create_descriptor(isr19_handler));
+    idt_install_handler(20, idt_create_descriptor(isr20_handler));
+    idt_install_handler(21, idt_create_descriptor(isr21_handler));
+    idt_install_handler(22, idt_create_descriptor(isr22_handler));
+    idt_install_handler(23, idt_create_descriptor(isr23_handler));
+    idt_install_handler(24, idt_create_descriptor(isr24_handler));
+    idt_install_handler(25, idt_create_descriptor(isr25_handler));
+    idt_install_handler(26, idt_create_descriptor(isr26_handler));
+    idt_install_handler(27, idt_create_descriptor(isr27_handler));
+    idt_install_handler(28, idt_create_descriptor(isr28_handler));
+    idt_install_handler(29, idt_create_descriptor(isr29_handler));
+    idt_install_handler(30, idt_create_descriptor(isr30_handler));
+    idt_install_handler(31, idt_create_descriptor(isr31_handler));
     
     // PIT
-    i86_install_ir(32, idt_create_descriptor(isr32_handler));
-    i86_install_ir(33, idt_create_descriptor(isr33_handler));
+    idt_install_handler(32, idt_create_descriptor(isr32_handler));
+    idt_install_handler(33, idt_create_descriptor(isr33_handler));
 
     // Rest...
     for (int i = 34; i < 256; i++){
         if (i == 0x80) {
-            i86_install_ir(0x80, idt_create_userland_descriptor(isr80_handler));
+            idt_install_handler(0x80, idt_create_userland_descriptor(isr80_handler));
         }
         else {
-            i86_install_ir(i, idt_create_descriptor(opaque_handler));
+            idt_install_handler(i, idt_create_descriptor(opaque_handler));
         }
     }
 
-    load_idtr(_idtr);
+    idtr_load(_idtr);
 
     return 0;    
 }

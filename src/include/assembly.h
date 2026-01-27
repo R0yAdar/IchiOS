@@ -37,7 +37,7 @@ void port_outl(uint16_t port, uint32_t val);
 
 uint32_t port_inl(uint16_t port);
 
-void load_idtr(idtr idtr);
+void idtr_load(idtr idtr);
 
 void interrupt80(uint64_t arg1, void* arg2);
 

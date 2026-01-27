@@ -10,7 +10,7 @@ unsigned volatile long long current_time = 0;
 unsigned volatile long long current_time_ms = 0;
 unsigned volatile long long current_char = 0;
 
-void init_pit()
+void pit_init()
 {
     uint32_t frequency = 20;
 
@@ -26,7 +26,7 @@ void pit_irq_handler()
     current_time_ms += 1000 / 20;
 }
 
-uint64_t get_current_time_ms()
+uint64_t pit_get_current_time_ms()
 {
     return current_time_ms;
 }

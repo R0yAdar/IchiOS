@@ -26,6 +26,6 @@
 #define PIC2_ATA_CHANNEL1 0x10
 #define PIC2_ATA_CHANNEL2 0x20
 
-void init_pic();
+void pic_init();
 
 #endif

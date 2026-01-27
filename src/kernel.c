@@ -134,13 +134,13 @@ void _start_kernel(multiboot_info *info)
 	__early_init_framebuffer(info);
 	qemu_log("INIT PMM MEMORY MANAGER");
 
-	init_idt();
+	idt_init();
 
-	init_pic();
+	pic_init();
 
 	qemu_log("Ichi kernel enabled PIC...");
 
-	init_pit();
+	pit_init();
 
 	qemu_log("Ichi kernel enabled PIT...");
 

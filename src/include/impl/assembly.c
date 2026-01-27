@@ -86,7 +86,7 @@ uint32_t port_inl(uint16_t port)
     return ret;
 }
 
-void load_idtr(idtr idtr)
+void idtr_load(idtr idtr)
 {
     asm volatile(
         "lidt %0"

@@ -22,7 +22,7 @@ void finish_pic_setup() {
     port_outb(PIC2_DATA_PORT, 0x01);
 }
 
-void remap_pic() {
+void pic_remap() {
     restart_pics();
 
     relocate_idt_offsets();
@@ -32,8 +32,8 @@ void remap_pic() {
     finish_pic_setup(); 
 }
 
-void init_pic() {
-    remap_pic();
+void pic_init() {
+    pic_remap();
 
     uint8_t pic1_enabled_irqs = PIC1_SYSTEM_TIMER | PIC1_KEYBOARD_CONTROLLER;
     port_outb(PIC1_DATA_PORT, (~pic1_enabled_irqs));
