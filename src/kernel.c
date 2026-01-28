@@ -224,6 +224,7 @@ void clean_start()
 		qemu_log("Failed to open exe file");
 	}
 	else {
+		scheduler_init();
 		process_ctx* p1 = process_create();
 		process_init_idle(p1);
 		scheduler_add_process(p1);

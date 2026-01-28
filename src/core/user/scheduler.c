@@ -2,14 +2,30 @@
 #include "process.h"
 #include "assembly.h"
 #include "scheduler.h"
+#include "../intrp/pit.h"
 #include "vmm.h"
 
-process_ctx *active = NULL;
-process_ctx *processes[512] = {NULL};
-uint16_t current_process = 0;
+#define SCHEDULER_TIME_PER_PROCESS_MS 10
+#define SCHEDULER_PROCESS_COUNT 512
 
-uint64_t ticks = 0;
-BOOL is_time_to_switch = FALSE;
+/// Scheduler verdicts, in idt.asm there are interceptors that use these to determine if the scheduler should switch.
+#define SCHEDULER_SHOULD_SWITCH_VERDICT 1
+#define SCHEDULER_NO_SWITCH_VERDICT 0
+
+process_ctx *_active = NULL;
+process_ctx **_processes;
+uint16_t _current_process = 0;
+uint64_t _current_deadline = 0;
+
+BOOL should_switch = FALSE;
+
+BOOL scheduler_init()
+{
+    _processes = (process_ctx **)kmalloc(sizeof(process_ctx *) * SCHEDULER_PROCESS_COUNT);
+    if (!_processes)
+        return FALSE;
+    return TRUE;
+}
 
 uint64_t scheduler_check(uint64_t rsp)
 {
@@ -17,49 +33,56 @@ uint64_t scheduler_check(uint64_t rsp)
 
     volatile stack_layout *stack = (stack_layout *)rsp;
 
-    ++ticks;
-    if (ticks % 10 == 0 || (active && process_get_state(active) != PROCESS_READY)) {
-        is_time_to_switch = TRUE;
+    if (_current_deadline < pit_get_current_time_ms() || (_active && process_get_state(_active) != PROCESS_READY))
+    {
+        should_switch = TRUE;
     }
 
-    if (is_time_to_switch && !IS_HIGHER_HALF(stack->rip))
-    {        
-        if (active)
+    if (should_switch && !IS_HIGHER_HALF(stack->rip))
+    {
+        if (_active)
         {
-            process_stop(active, stack);
+            process_stop(_active, stack);
         }
 
-        return 1;
+        return SCHEDULER_SHOULD_SWITCH_VERDICT;
     }
 
-    return 0;
+    return SCHEDULER_NO_SWITCH_VERDICT;
 }
 
 __attribute__((naked, noreturn)) void scheduler_switch()
 {
-    is_time_to_switch = FALSE;
+    should_switch = FALSE;
+    _current_deadline = pit_get_current_time_ms() + SCHEDULER_TIME_PER_PROCESS_MS;
 
-    while (!processes[++current_process] || process_get_state(processes[current_process]) != PROCESS_READY)
+    while (!_processes[++_current_process] || process_get_state(_processes[_current_process]) != PROCESS_READY)
     {
-        if (current_process == 511) current_process = 0;
+        if (_current_process == (SCHEDULER_PROCESS_COUNT - 1))
+        {
+            _current_process = 0;
+        }
     }
 
-    active = processes[current_process];
+    _active = _processes[_current_process];
 
-    process_resume(active);
+    process_resume(_active);
 }
 
-process_ctx* scheduler_get_active() {
-    return active;
+process_ctx *scheduler_get_active()
+{
+    return _active;
 }
 
 void scheduler_add_process(process_ctx *ctx)
 {
-    uint16_t i = 0;
-    while (processes[++i]);
-    processes[i] = ctx;
+    uint16_t free_cell_index = 0;
+    while (_processes[++free_cell_index])
+        ;
+    _processes[free_cell_index] = ctx;
 }
 
-__attribute__((naked, noreturn)) void scheduler_transfer_ctrl() {
+__attribute__((naked, noreturn)) void scheduler_transfer_ctrl()
+{
     scheduler_switch();
 }
