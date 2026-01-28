@@ -18,24 +18,14 @@ uint64_t scheduler_check(uint64_t rsp)
     volatile stack_layout *stack = (stack_layout *)rsp;
 
     ++ticks;
-    if (ticks % 10 == 0) {
+    if (ticks % 10 == 0 || (active && process_get_state(active) != PROCESS_READY)) {
         is_time_to_switch = TRUE;
     }
 
     if (is_time_to_switch && !IS_HIGHER_HALF(stack->rip))
-    {
-        /*
-        volatile uint64_t *stack_i = (uint64_t*)rsp;
-        qemu_logf("Stack layout:");
-        for (size_t i = 0; i < 14; i++)
-        {
-            qemu_logf("    %x", stack_i[i]);
-        }
-        */
-        
+    {        
         if (active)
         {
-            qemu_logf("Stopping process %x", active);
             process_stop(active, stack);
         }
 
@@ -49,7 +39,7 @@ __attribute__((naked, noreturn)) void scheduler_switch()
 {
     is_time_to_switch = FALSE;
 
-    while (!processes[++current_process])
+    while (!processes[++current_process] || process_get_state(processes[current_process]) != PROCESS_READY)
     {
         if (current_process == 511) current_process = 0;
     }
@@ -57,6 +47,10 @@ __attribute__((naked, noreturn)) void scheduler_switch()
     active = processes[current_process];
 
     process_resume(active);
+}
+
+process_ctx* scheduler_get_active() {
+    return active;
 }
 
 void scheduler_add_process(process_ctx *ctx)

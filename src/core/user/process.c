@@ -8,24 +8,31 @@
 #define STACK_ADDRESS 0x70000000
 #define STACK_SIZE (4096 * 2)
 
+uint64_t _pid = 0;
+
+uint64_t get_pid() {
+    return _pid++;
+}
+
 struct process_ctx
 {
     uint64_t pid;
+
     pagetable_context *vmem_ctx;
     stack_layout exec_ctx;
+    process_state state;
 };
 
 process_ctx *process_create()
 {
-    qemu_logf("Size of ctx: %d", sizeof(process_ctx));
+    process_ctx *ctx = kmalloc(sizeof(process_ctx));
 
-    process_ctx *ctx = kmalloc(sizeof(process_ctx)); // kpage_alloc(1); // kmalloc failes fix it!
-    qemu_logf("Allocated process ctx at %x", ctx);
     if (!ctx)
         return NULL;
 
     ctx->vmem_ctx = vmm_create_userspace_context();
-    ctx->pid = 0;
+    ctx->pid = get_pid();
+    ctx->state = PROCESS_CREATED;
 
     qemu_logf("Process created with pid %d", ctx->pid);
 
@@ -70,6 +77,7 @@ void process_exec(process_ctx *ctx, file *elf)
 
     ctx->exec_ctx.rsp = STACK_ADDRESS + STACK_SIZE;
     ctx->exec_ctx.rip = (uint64_t)entry;
+    ctx->state = PROCESS_READY;
 }
 
 void process_init_idle(process_ctx *ctx)
@@ -82,16 +90,21 @@ void process_init_idle(process_ctx *ctx)
 
     ctx->exec_ctx.rsp = 0x0;
     ctx->exec_ctx.rip = 0x1000;
+    ctx->state = PROCESS_READY;
 }
 
 void process_stop(process_ctx *ctx, volatile stack_layout *stack)
-{ 
+{
+    if (ctx->state != PROCESS_BLOCKED) {
+        ctx->state = PROCESS_READY;
+    }
+
     ctx->exec_ctx = *stack;
 }
 
 __attribute__((naked, noreturn)) void process_resume(process_ctx *ctx)
 {
-    qemu_logf("Resuming process %x", ctx);
+    ctx->state = PROCESS_ACTIVE;
     vmm_apply_pagetable(ctx->vmem_ctx);
 
     asm volatile(
@@ -133,6 +146,22 @@ __attribute__((naked, noreturn)) void process_resume(process_ctx *ctx)
         :
         : "r"(ctx->exec_ctx.rsp), "r"(ctx->exec_ctx.rip)
         : "ax", "memory");
+}
+
+void process_block(process_ctx *ctx) {
+    ctx->state = PROCESS_BLOCKED;
+}
+
+void process_unblock(process_ctx *ctx) {
+    ctx->state = PROCESS_READY;
+}
+
+process_state process_get_state(process_ctx *ctx) {
+    return ctx->state;
+}
+
+uint64_t process_get_pid(process_ctx *ctx) {
+    return ctx->pid;
 }
 
 void process_exit(process_ctx *ctx)

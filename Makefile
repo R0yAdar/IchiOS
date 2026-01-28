@@ -28,8 +28,8 @@ OBJS := $(patsubst $(SRC_DIR)/%.c, $(BUILD_DIR)/%.c.o, $(C_SRCS)) \
 BOOT_IMAGE := $(BUILD_DIR)/boot_image
 
 # Define the programs build path relative to the main Makefile
-PROG_SRC_DIR   := programs
-PROG_BUILD_DIR := $(BUILD_DIR)/programs
+PROG_SRC_DIR   := programs/example
+PROG_BUILD_DIR := $(BUILD_DIR)/programs/example
 
 # Define the xlibc build path relative to the main Makefile
 XLIBC_SRC_DIR   := xlibc
@@ -65,7 +65,7 @@ $(BOOT_IMAGE): $(BUILD_DIR)/linked.elf
 	mkdir -p build/rootfs
 	mkdir -p build/rootfs/files
 	echo "<START OF FILE> \n hello world \n <END OF FILE>" > build/rootfs/files/readme.txt
-	mv build/programs/example.elf build/rootfs/files/example.elf
+	mv build/programs/example/example.elf build/rootfs/files/example.elf
 
 	genext2fs -b 10240 -d build/rootfs build/fs.ext2
 

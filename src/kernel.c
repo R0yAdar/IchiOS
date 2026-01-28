@@ -32,6 +32,8 @@ extern uint64_t __bss_start;
 extern uint64_t __bss_end;
 extern uint64_t __kernel_origin;
 
+void clean_start();
+
 void *_top_of_kernel_stack = NULL;
 io_device device = {0};
 tss _tss = {0};
@@ -62,23 +64,20 @@ void __early_init_pmm(multiboot_info *info)
 
 void __early_init_framebuffer(multiboot_info *info)
 {
-	qemu_log("Saving framebuffer info...");
+	qemu_logf("Saving framebuffer (Screen=%dx%d, bpp=%d, MemoryModel=%d)", vbe_mode_info.width, vbe_mode_info.height, vbe_mode_info.bpp, vbe_mode_info.memory_model);
 	vbe_mode_info_structure *mode_info = (vbe_mode_info_structure *)(uint64_t)info->m_vbe_mode_info;
 	vbe_mode_info = *mode_info;
 }
 
-void _rest_of_start();
-
-void init_kernel_stack()
+void __switch_kernel_stack()
 {
 	void *stack = kpage_alloc(KERNEL_STACK_SIZE);
 	void *stack_top = (void *)((char *)stack + KERNEL_STACK_SIZE * PAGE_SIZE);
 
 	_top_of_kernel_stack = stack_top;
 	
-	
-	qemu_logf("Stack top: %x", stack_top);
-	switch_stack(stack_top, _rest_of_start);
+	qemu_logf("New stack top: %x", stack_top);
+	switch_stack(stack_top, clean_start);
 }
 
 void key_callback(uint8_t scancode, BOOL pressed)
@@ -133,6 +132,7 @@ void _start_kernel(multiboot_info *info)
 	__early_zero_bss(&__bss_start, &__bss_end);
 	__early_init_pmm(info);
 	__early_init_framebuffer(info);
+
 	qemu_log("INIT PMM MEMORY MANAGER");
 
 	idt_init();
@@ -140,10 +140,6 @@ void _start_kernel(multiboot_info *info)
 	pic_init();
 
 	qemu_log("Ichi kernel enabled PIC...");
-
-	pit_init();
-
-	qemu_log("Ichi kernel enabled PIT...");
 
 	kybrd_init();
 
@@ -157,12 +153,16 @@ void _start_kernel(multiboot_info *info)
 
 	vmm_init();
 
+	pit_init();
+
+	qemu_log("Ichi kernel enabled PIT...");
+
 	qemu_log("Ichi kernel setup VMM...");
 
-	init_kernel_stack();
+	__switch_kernel_stack();
 }
 
-void _rest_of_start()
+void clean_start()
 {
 	_tss = create_tss_segment(_top_of_kernel_stack);
 	gdt_init(&_tss, sizeof(tss));
@@ -201,12 +201,6 @@ void _rest_of_start()
 
 	fclose(f);
 
-	qemu_logf("Screen %dx%d", vbe_mode_info.height, vbe_mode_info.width);
-
-	qemu_logf("Logging bpp: %d", vbe_mode_info.bpp);
-
-	qemu_logf("Memory model: %d", vbe_mode_info.memory_model);
-
 	framebuffer *fb = framebuffer_init(
 		vmm_get_vaddr((void *)(uint64_t)vbe_mode_info.framebuffer),
 		vbe_mode_info.width,
@@ -222,21 +216,6 @@ void _rest_of_start()
 	else
 	{
 		framebuffer_clear(fb);
-
-		framebuffer_draw_char8x8(fb, 0, 0, 'H', 0xF800, 2);
-		framebuffer_draw_char8x8(fb, 16, 0, 'E', 0x07C0, 2);
-		framebuffer_draw_char8x8(fb, 32, 0, 'L', 0x001F, 2);
-		framebuffer_draw_char8x8(fb, 48, 0, 'L', 0xF800, 2);
-		framebuffer_draw_char8x8(fb, 64, 0, 'O', 0x07C0, 2);
-		framebuffer_draw_char8x8(fb, 80, 0, ' ', 0x001F, 2);
-		framebuffer_draw_char8x8(fb, 96, 0, 'W', 0xF800, 2);
-		framebuffer_draw_char8x8(fb, 112, 0, 'O', 0x07C0, 2);
-		framebuffer_draw_char8x8(fb, 128, 0, 'R', 0x001F, 2);
-		framebuffer_draw_char8x8(fb, 144, 0, 'L', 0xF800, 2);
-		framebuffer_draw_char8x8(fb, 160, 0, 'D', 0x07C0, 2);
-		framebuffer_draw_char8x8(fb, 176, 0, '!', 0x001F, 2);
-
-		qemu_log("tried to draw something");
 	}
 
 	file *exe = fopen("/files/example.elf", READ);
@@ -254,7 +233,7 @@ void _rest_of_start()
 		scheduler_add_process(p);
 	}
 	qemu_log("Transferring control to scheduler");
-	
+
 	syscall_init(fb);
 	scheduler_transfer_ctrl();
 	

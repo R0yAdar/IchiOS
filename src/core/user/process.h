@@ -35,6 +35,13 @@ typedef struct
 
 #pragma pack(pop)
 
+typedef enum {
+    PROCESS_CREATED,
+    PROCESS_READY,
+    PROCESS_ACTIVE,
+    PROCESS_BLOCKED
+} process_state;
+
 process_ctx* process_create();
 
 void process_exec(process_ctx* ctx, file* elf);
@@ -44,6 +51,14 @@ void process_init_idle(process_ctx *ctx);
 void process_stop(process_ctx *ctx, volatile stack_layout* stack);
 
 void process_resume(process_ctx *ctx);
+
+void process_block(process_ctx *ctx);
+
+void process_unblock(process_ctx *ctx);
+
+process_state process_get_state(process_ctx *ctx);
+
+uint64_t process_get_pid(process_ctx *ctx);
 
 void process_exit(process_ctx *ctx);
 

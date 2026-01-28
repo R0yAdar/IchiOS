@@ -12,10 +12,12 @@
 /* Magic values */ 
 #define PIT_OSCILLATOR_SIGNAL_HZ 1193182U
 
+typedef void (*pit_subscriber_callback)(void*);
+
 void pit_init();
 
 uint64_t pit_get_current_time_ms();
 
-void sleep(uint64_t ms);
+BOOL pit_subscribe(pit_subscriber_callback callback, void* data, uint32_t relative_deadline_ms);
 
 #endif
