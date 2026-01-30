@@ -4,7 +4,7 @@
 #include "stdint.h"
 #include "stdarg.h"
 
-typedef struct FILE FILE;
+typedef uint64_t FILE;
 
 int printf(const char* format, ...);
 

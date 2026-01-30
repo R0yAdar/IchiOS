@@ -2,38 +2,50 @@
 #include <stdio.h>
 #include <stdint.h>
 
+#include "sysapi.h"
+
 int net_client_connected = 0;
 int drone = 0;
 
-// 4. Mandatory doomgeneric Implementations
 void DG_Init() {
-    // Init your framebuffer here
+    puts("Initializing...");
 }
 
 void DG_DrawFrame() {
     // DG_ScreenBuffer is a 320x200 uint32_t array
     // Copy it to your OS screen memory
+    puts("Drawing frame...");
 }
 
 void DG_SleepMs(uint32_t ms) {
-    // Your OS sleep function
+    syscall_sleep(ms);
 }
 
 uint32_t DG_GetTicksMs() {
-    // Your OS uptime in milliseconds
-    return 0; 
+    return (uint32_t)syscall_get_uptime(); 
 }
 
 int DG_GetKey(int* pressed, unsigned char* key) {
-    return 0; // Return 1 if a key event happened
+    return 0;
 }
 
 void DG_SetWindowTitle(const char * title) {}
 
 void _start() {
     puts("Hello from _start!");
+
+    int argc = 0;
+    char** argv = NULL;
+
+    doomgeneric_Create(argc, argv);
+
     while (1)
     {
-        /* code */
+        doomgeneric_Tick();
+    }
+
+    while (1)
+    {
+        puts("Doom finished...");
     }
 } 

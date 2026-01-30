@@ -1,15 +1,24 @@
 #include "stdlib.h"
-
-#include "stdlib.h"
 #include "string.h"
 
+#define HEAP_START_ADDRESS 0x100000000
+#define HEAP_SIZE (0xA00000)
+
+uint64_t _heap_start = HEAP_START_ADDRESS;
+uint64_t _heap_end = HEAP_START_ADDRESS + HEAP_SIZE;
+uint64_t _heap_current = HEAP_START_ADDRESS;
+
+
 void* malloc(size_t size) {
-    // syscall: sbrk or mmap to request memory from the kernel
-    return NULL;
+    if (_heap_current + size > _heap_end)
+        return NULL;
+
+    void* ptr = (void*)_heap_current;
+    _heap_current += size;
+    return ptr;
 }
 
 void free(void* ptr) {
-    // syscall: depends on your allocator logic, usually marks block as free
     return;
 }
 
@@ -21,19 +30,7 @@ void* calloc(size_t nmemb, size_t size) {
 }
 
 void* realloc(void* ptr, size_t size) {
-    if (!ptr) return malloc(size);
-    if (size == 0) {
-        free(ptr);
-        return NULL;
-    }
-    void* new_ptr = malloc(size);
-    if (new_ptr) {
-        // Note: This is inefficient without knowing the original size, 
-        // but works for a minimal libc interface.
-        memcpy(new_ptr, ptr, size); 
-        free(ptr);
-    }
-    return new_ptr;
+    return NULL;
 }
 
 int atoi(const char* nptr) {

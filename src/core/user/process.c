@@ -5,8 +5,10 @@
 #include "assembly.h"
 #include "scheduler.h"
 
-#define STACK_ADDRESS 0x70000000
+#define STACK_ADDRESS 0x150000000
 #define STACK_SIZE (4096 * 2)
+#define HEAP_ADDRESS 0x100000000
+#define HEAP_SIZE (0xA00000)
 
 uint64_t _pid = 0;
 
@@ -70,6 +72,12 @@ void process_exec(process_ctx *ctx, file *elf)
     }
 
     if (!vmm_allocate_umm(ctx->vmem_ctx, STACK_ADDRESS, STACK_SIZE))
+    {
+        qemu_log("Failed to allocate stack");
+        return;
+    }
+
+    if (!vmm_allocate_umm(ctx->vmem_ctx, HEAP_ADDRESS, HEAP_SIZE))
     {
         qemu_log("Failed to allocate stack");
         return;

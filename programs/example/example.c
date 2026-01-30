@@ -1,4 +1,4 @@
-#include "../../include/sysapi.h"
+#include "sysapi.h"
 
 unsigned short color = 0xF800;
 

@@ -3,7 +3,7 @@
 #include "../intrp/pit.h"
 #include "assembly.h"
 #include "serial.h"
-#include "../../../include/sys_structs.h"
+#include "../../../sys_common/sys_structs.h"
 #include "scheduler.h"
 
 typedef void (*syscall_handler_t)(void *ptr);
@@ -70,6 +70,12 @@ void sh_putc(void *ptr)
     qemu_putc(c);
 }
 
+void sh_get_uptime(void *ptr)
+{
+    uint64_t* uptime = (uint64_t*)ptr;
+    *uptime = pit_get_current_time_ms();
+}
+
 void syscall_init(framebuffer *fb)
 {
     _fb = fb;
@@ -78,6 +84,7 @@ void syscall_init(framebuffer *fb)
     _syscalls[2] = (syscall_handler_t)sh_echo;
     _syscalls[3] = (syscall_handler_t)sh_draw_char;
     _syscalls[4] = (syscall_handler_t)sh_putc;
+    _syscalls[5] = (syscall_handler_t)sh_get_uptime;
 
     
 }

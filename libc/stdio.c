@@ -1,6 +1,6 @@
 #include "stdio.h"
 #include "stdarg.h"
-#include "../include/sysapi.h"
+#include "sysapi.h"
 
 static char* _itoa(long value, char* str, int base) {
     char *rc, *ptr, *low;
@@ -66,14 +66,24 @@ int fprintf(FILE* stream, const char* format, ...) {
     va_start(va, format);
     int ret = vsnprintf(buf, sizeof(buf), format, va);
     va_end(va);
-    // syscall: write(stream->fd, buf, ret)
+
+    if (stream == stderr) {
+        puts("ERR:");
+    }
+
+    puts(buf);
     return ret;
 }
 
 int vfprintf(FILE* stream, const char* format, va_list vlist) {
     char buf[1024];
     int ret = vsnprintf(buf, sizeof(buf), format, vlist);
-    // syscall: write(stream->fd, buf, ret)
+
+    if (stream == stderr) {
+        puts("ERR:");
+    }
+
+    puts(buf);
     return ret;
 }
 
@@ -85,54 +95,41 @@ void snprintf(char *buffer, size_t len, char *fmt, ...) {
 }
 
 int sscanf(const char *str, const char *format, ...) {
-    // This is hard to implement minimally. 
-    // Doom uses it for config files. For now, we return 0.
     return 0;
 }
 
-/* --- File I/O --- */
-
 FILE* fopen(const char* filename, const char* mode) {
-    // 1. // syscall: open filename
-    // 2. // syscall: malloc(sizeof(FILE))
-    // 3. Set FILE->fd and return it
-    return NULL; 
+    uint64_t fid;
+    syscall_file_open(filename, &fid);
+    return (FILE*)fid;
 }
 
 int fclose(FILE* stream) {
-    // // syscall: close(stream->fd)
-    // // syscall: free(stream)
+    syscall_file_close((uint64_t)stream);
     return 0;
 }
 
 size_t fread(void* ptr, size_t size, size_t nmemb, FILE* stream) {
     size_t total = size * nmemb;
-    // // syscall: read(stream->fd, ptr, total)
-    return nmemb; 
+    return (size_t)syscall_file_read((uint64_t)stream, ptr, total);
 }
 
 size_t fwrite(const void* ptr, size_t size, size_t nmemb, FILE* stream) {
-    size_t total = size * nmemb;
-    // // syscall: write(stream->fd, ptr, total)
-    return nmemb;
+    return 0;
 }
 
 int fseek(FILE* stream, long offset, int whence) {
-    // // syscall: lseek(stream->fd, offset, whence)
-    return 0;
+    return (int)syscall_file_seek((uint64_t)stream, offset, whence);
 }
 
 long ftell(FILE* stream) {
-    // // syscall: lseek(stream->fd, 0, SEEK_CUR)
-    return 0;
+    return (long)syscall_file_tell((uint64_t)stream);
 }
 
 int feof(FILE* stream) {
     // Return 1 if current pos == file size
     return 0;
 }
-
-/* --- Basic Output --- */
 
 int putchar(int c) {
     char b = (char)c;
