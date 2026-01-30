@@ -27,6 +27,17 @@ int vsnprintf(char* s, size_t n, const char* fmt, va_list ap) {
     while (*fmt && written < (n - 1)) {
         if (*fmt == '%') {
             fmt++; // move past '%'
+            
+            int precision = -1;
+            if (*fmt == '.') {
+                fmt++; // move past '.'
+                precision = 0;
+                while (*fmt >= '0' && *fmt <= '9') {
+                    precision = precision * 10 + (*fmt - '0');
+                    fmt++;
+                }
+            }
+
             switch (*fmt) {
                 case 's': {
                     char* str = va_arg(ap, char*);
@@ -39,7 +50,20 @@ int vsnprintf(char* s, size_t n, const char* fmt, va_list ap) {
                 case 'i': {
                     char buf[32];
                     _itoa(va_arg(ap, int), buf, 10);
-                    for (int i = 0; buf[i] && written < (n - 1); i++) s[written++] = buf[i];
+                    
+                    // Calculate leading zeros needed
+                    int len = 0;
+                    while (buf[len]) len++;
+                    int padding = (precision > len) ? (precision - len) : 0;
+
+                    // Write padding
+                    while (padding-- > 0 && written < (n - 1)) {
+                        s[written++] = '0';
+                    }
+                    // Write the number
+                    for (int i = 0; buf[i] && written < (n - 1); i++) {
+                        s[written++] = buf[i];
+                    }
                     break;
                 }
                 case 'x':
@@ -53,7 +77,6 @@ int vsnprintf(char* s, size_t n, const char* fmt, va_list ap) {
                     s[written++] = '%';
                     break;
                 default:
-                    // If we don't know the type, just print the char so we don't desync
                     s[written++] = *fmt;
                     break;
             }
@@ -65,7 +88,6 @@ int vsnprintf(char* s, size_t n, const char* fmt, va_list ap) {
     s[written] = '\0';
     return (int)written;
 }
-
 
 int printf(const char* format, ...) {
     char buf[1024];
