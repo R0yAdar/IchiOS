@@ -1,13 +1,19 @@
 #include "ctype.h"
 
 int toupper(int c) {
-    return c - 0x20;
+    if (c >= 'a' && c <= 'z') {
+        return c - 0x20;
+    }
+    return c;
 }
 
 int tolower(int c) {
-    return c + 0x20;
+    if (c >= 'A' && c <= 'Z') {
+        return c + 0x20;
+    }
+    return c;
 }
 
 int isspace(int c) {
-    return c == ' ';
+    return (c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\f' || c == '\v');
 }

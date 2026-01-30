@@ -75,9 +75,13 @@ void qemu_log(const char *str)
    write_serial('\n');
 }
 
-void qemu_putc(char c)
+void qemu_puts(char* str)
 {
-   write_serial(c);
+   while (*str != '\0')
+   {
+      write_serial(*str);
+      ++str;
+   }
 }
 
 void serial_init()

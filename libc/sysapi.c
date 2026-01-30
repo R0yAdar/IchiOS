@@ -13,8 +13,8 @@ void syscall_echo(char* msg) {
     syscall(2, msg);
 }
 
-void syscall_putc(char c) {
-    syscall(4, c);
+void syscall_puts(char* str) {
+    syscall(4, str);
 }
 
 uint64_t syscall_get_uptime() {
@@ -49,10 +49,27 @@ uint64_t syscall_file_read(uint64_t fid, void* buffer, uint64_t buffer_len) {
 }
 
 uint64_t syscall_file_seek(uint64_t fid, uint64_t offset, int whence) {
+    sys_file_action data = {
+        .id = fid,
+        .action = SYS_FILE_SEEK,
+        .data = (void*)whence,
+        .data_len = offset,
+    };
+
+    syscall(SYSCALL_FILE_OPS_CODE, &data);
+
+    return data.data_len;
 }
 
 uint64_t syscall_file_tell(uint64_t fid) {
-    return 0;
+    sys_file_action data = {
+        .id = fid,
+        .action = SYS_FILE_TELL,
+    };
+
+    syscall(SYSCALL_FILE_OPS_CODE, &data);
+
+    return data.data_len;
 }
 
 void syscall_file_close(uint64_t fid) {

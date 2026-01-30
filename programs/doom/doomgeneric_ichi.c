@@ -7,37 +7,50 @@
 int net_client_connected = 0;
 int drone = 0;
 
-void DG_Init() {
+void DG_Init()
+{
     puts("Initializing...");
 }
 
-void DG_DrawFrame() {
+void DG_DrawFrame()
+{
     // DG_ScreenBuffer is a 320x200 uint32_t array
     // Copy it to your OS screen memory
     puts("Drawing frame...");
 }
 
-void DG_SleepMs(uint32_t ms) {
+void DG_SleepMs(uint32_t ms)
+{
     syscall_sleep(ms);
 }
 
-uint32_t DG_GetTicksMs() {
-    return (uint32_t)syscall_get_uptime(); 
+uint32_t DG_GetTicksMs()
+{
+    return (uint32_t)syscall_get_uptime();
 }
 
-int DG_GetKey(int* pressed, unsigned char* key) {
+int DG_GetKey(int *pressed, unsigned char *key)
+{
     return 0;
 }
 
-void DG_SetWindowTitle(const char * title) {}
+void DG_SetWindowTitle(const char *title) {}
 
-void _start() {
+void _start()
+{
     puts("Hello from _start!");
 
-    int argc = 0;
-    char** argv = NULL;
+    char *argv[] = {
+        "doom.elf",
+        "-iwad",
+        "/files/doom1.wad",
+        NULL};
+
+    int argc = 3;
 
     doomgeneric_Create(argc, argv);
+
+    puts("CReAtED");
 
     while (1)
     {
@@ -48,4 +61,4 @@ void _start() {
     {
         puts("Doom finished...");
     }
-} 
+}

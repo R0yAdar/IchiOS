@@ -8,17 +8,37 @@ uint64_t _heap_start = HEAP_START_ADDRESS;
 uint64_t _heap_end = HEAP_START_ADDRESS + HEAP_SIZE;
 uint64_t _heap_current = HEAP_START_ADDRESS;
 
+#pragma pack(push, 1)
+
+typedef struct
+{
+    uint64_t size;
+    uint64_t next_free;
+} heap_header;
+
+#pragma pack(pop)
+
+heap_header* free_list;
+
 
 void* malloc(size_t size) {
+    size += sizeof(heap_header);
     if (_heap_current + size > _heap_end)
         return NULL;
 
-    void* ptr = (void*)_heap_current;
+    heap_header* ptr = (heap_header*)_heap_current;
     _heap_current += size;
-    return ptr;
+    ptr->next_free = NULL;
+    ptr->size = size - sizeof(heap_header);
+
+    return ptr + 1;
 }
 
 void free(void* ptr) {
+    if (!ptr) return;
+    heap_header* header = (heap_header*)ptr - 1;
+    header->next_free = free_list;
+    free_list = header;
     return;
 }
 
@@ -30,7 +50,13 @@ void* calloc(size_t nmemb, size_t size) {
 }
 
 void* realloc(void* ptr, size_t size) {
-    return NULL;
+    if (!ptr) return malloc(size);
+    heap_header* header = (heap_header*)ptr - 1;
+    void* new_ptr = malloc(size);
+    size_t min = header->size < size ? header->size : size;
+    if (new_ptr) memcpy(new_ptr, ptr, min);
+    free(ptr);
+    return new_ptr;
 }
 
 int atoi(const char* nptr) {
@@ -63,5 +89,7 @@ int system(const char* command) {
 }
 
 void exit(int status) {
+    puts("Exiting...");
+    while (1) {};
     return;
 }

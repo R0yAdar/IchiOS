@@ -1621,7 +1621,7 @@ void D_DoomMain (void)
 
     // Initial netgame startup. Connect to server etc.
     D_ConnectNetGame();
-
+    
     // get skill / episode / map from parms
     startskill = sk_medium;
     startepisode = 1;

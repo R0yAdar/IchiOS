@@ -1891,6 +1891,8 @@ void M_LoadDefaults (void)
     // default.
     //
 
+    printf("M_LoadDefaults: Loading system defaults.\n");
+
     i = M_CheckParmWithArgs("-config", 1);
 
     if (i)
@@ -1938,7 +1940,6 @@ static default_t *GetDefaultForName(char *name)
     default_t *result;
 
     // Try the main list and the extras
-
     result = SearchCollection(&doom_defaults, name);
 
     if (result == NULL)

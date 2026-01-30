@@ -14,7 +14,7 @@ typedef struct
     unsigned short scale;
 } sys_put_c;
 
-#define SYSCALL_FILE_OPS_CODE 0x4
+#define SYSCALL_FILE_OPS_CODE 0x6
 
 typedef enum {
     SYS_FILE_OPEN = 0,

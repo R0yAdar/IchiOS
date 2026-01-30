@@ -340,10 +340,44 @@ uint64_t ext2_readfile(ext2_context* ctx, vnode* node, void* buffer, uint64_t le
     return len;
 }
 
+uint64_t ext2_seek(vnode* node, uint64_t offset, seek_mode whence) {
+    ext2_vnode_data* data = (ext2_vnode_data*)node->data;
+
+    if (whence == SEEK_SET) {
+        if (offset > node->size) {
+            return -1;
+        }
+
+        data->position = offset;
+    }
+    else if (whence == SEEK_CUR) {
+        if (data->position + offset > node->size) {
+            return -1;
+        }
+
+        data->position += offset;
+    }
+    else if (whence == SEEK_END) {
+        if (data->position + offset > node->size) {
+            return -1;
+        }
+
+        data->position = node->size + offset;
+    }
+
+    return 0;
+}
+
+uint64_t ext2_tell(vnode* node) {
+    return ((ext2_vnode_data*)node->data)->position;
+}
+
 vfs_ops ext2_ops = {
     .open_root = (open_root_callback)ext2_open_root,
     .open = (open_callback)ext2_open_entry,
     .readdir = (readdir_callback)ext2_readdir,
     .readfile = (readfile_callback)ext2_readfile,
+    .seek = (seek_callback)ext2_seek,
+    .tell = (tell_callback)ext2_tell,
     .close = (close_callback)ext2_close
 };

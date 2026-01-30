@@ -132,6 +132,16 @@ size_t fread(void* buffer, uint64_t size, uint64_t count, file* f) {
     return f->mountpoint->fs.ops->readfile(f->mountpoint->fs.context, f->vnode, buffer, size * count);
 }
 
+uint64_t fseek(file* f, uint64_t offset, seek_mode whence) {
+    if (!f) return 0;
+    return f->mountpoint->fs.ops->seek(f->vnode, offset, whence);
+}
+
+uint64_t ftell(file* f) {
+    if (!f) return 0;
+    return f->mountpoint->fs.ops->tell(f->vnode);
+}
+
 void fclose(file* f) {
     if (!f) return;
     --f->mountpoint->rc;

@@ -17,7 +17,6 @@ typedef struct {
     writer_t write;
 } io_device;
 
-
 typedef struct io_buffer io_buffer;
 
 uint64_t io_get_size(io_buffer* buffer);
@@ -56,7 +55,6 @@ typedef struct mounted_fs mounted_fs;
 typedef struct {
     vnode* vnode;
     uint64_t size;
-    uint64_t position;
     file_access_mode mode;
     mounted_fs* mountpoint;
 } file;
@@ -68,6 +66,12 @@ typedef struct {
 typedef struct {
     void* vnode;
 } dir_entry;
+
+typedef enum {
+    SEEK_SET = 0,
+    SEEK_CUR = 1,
+    SEEK_END = 2
+} seek_mode;
 
 dir* opendir(const char* path);
 
@@ -81,12 +85,18 @@ size_t fread(void* buffer, uint64_t size, uint64_t count, file* f);
 
 size_t fwrite(void* buffer, uint64_t size, uint64_t count, file* f);
 
+uint64_t fseek(file* f, uint64_t offset, seek_mode whence);
+
+uint64_t ftell(file* f);
+
 void fclose(file* f);
 
 typedef BOOL(*open_root_callback)(void* ctx, vnode* out);
 typedef BOOL(*open_callback)(void* ctx, ventry* entry, vnode* out);
 typedef BOOL(*readdir_callback)(void* ctx, vnode* node, ventry* out);
 typedef uint64_t (*readfile_callback)(void* ctx, vnode* node, void* buffer, uint64_t len);
+typedef uint64_t (*seek_callback)(vnode* node, uint64_t offset, seek_mode whence);
+typedef uint64_t (*tell_callback)(vnode* node);
 typedef void(*close_callback)(vnode* node);
 
 
@@ -95,6 +105,8 @@ typedef struct {
     open_callback open;
     readdir_callback readdir;
     readfile_callback readfile;
+    seek_callback seek;
+    tell_callback tell;
     close_callback close;
 } vfs_ops;
 

@@ -219,7 +219,7 @@ void clean_start()
 	}
 
 	file *exe = fopen("/files/doom.elf", READ);
-
+	
 	if (!exe) {
 		qemu_log("Failed to open exe file");
 	}

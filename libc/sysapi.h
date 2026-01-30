@@ -11,7 +11,7 @@ void syscall_sleep(uint64_t ms);
 
 void syscall_echo(char* msg);
 
-void syscall_putc(char c);
+void syscall_puts(char* str);
 
 uint64_t syscall_get_uptime();
 
