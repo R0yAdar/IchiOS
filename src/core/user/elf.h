@@ -12,6 +12,7 @@ typedef enum
     ELF_INVALID_RELOCATION
 } ELF_ERRORS;
 
+
 typedef struct
 {
     uint64_t vaddr;

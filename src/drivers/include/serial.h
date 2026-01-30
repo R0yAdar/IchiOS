@@ -13,6 +13,8 @@ void qemu_log(const char* s);
 
 void qemu_dump(void* buffer, uint64_t size);
 
+void qemu_putc(char c);
+
 void serial_init();
 
 #endif

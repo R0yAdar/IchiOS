@@ -43,18 +43,9 @@ void sh_sleep_exit(void* ptr) {
     process_unblock(p);
 }
 
-void sh_sleep()
+void sh_sleep(void* ptr)
 {
-    qemu_log("Sleeping");
-    /*
-    uint64_t end_time = pit_get_current_time_ms() + 1000;
-
-    while (pit_get_current_time_ms() < end_time)
-    {
-        hlt();
-    }
-    */
-    uint64_t time = 1000;
+    uint64_t time = (uint64_t)ptr;
 
     process_ctx* cur = scheduler_get_active();
     pit_subscribe(sh_sleep_exit, cur, (uint32_t)time);
@@ -73,6 +64,12 @@ void sh_draw_char(void *ptr)
     framebuffer_draw_char8x8(_fb, c->x, c->y, c->c, c->color, c->scale);
 }
 
+void sh_putc(void *ptr)
+{
+    char c = (char)(uint64_t)ptr;
+    qemu_putc(c);
+}
+
 void syscall_init(framebuffer *fb)
 {
     _fb = fb;
@@ -80,4 +77,7 @@ void syscall_init(framebuffer *fb)
     _syscalls[1] = (syscall_handler_t)sh_sleep;
     _syscalls[2] = (syscall_handler_t)sh_echo;
     _syscalls[3] = (syscall_handler_t)sh_draw_char;
+    _syscalls[4] = (syscall_handler_t)sh_putc;
+
+    
 }

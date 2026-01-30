@@ -268,7 +268,7 @@ void *kmalloc(size_t len)
         ke_set_block_length(&metadata, page_count * PAGE_SIZE);
 
         *(kmalloc_entry_metadata_t *)(vaddr) = metadata;
-        qemu_logf("Giving 0x%x for %d", (kmalloc_entry_metadata_t *)(vaddr) + 1, len);
+        
         return (void *)((kmalloc_entry_metadata_t *)(vaddr) + 1);
     }
 
@@ -288,7 +288,6 @@ void *kmalloc(size_t len)
     if (addr != NULL)
     {
         --ke_get_metadata(addr)->free_count;
-        qemu_logf("Giving 0x%x for %d", (kmalloc_entry_metadata_t *)(addr) + 1, len);
         return addr;
     }
 
