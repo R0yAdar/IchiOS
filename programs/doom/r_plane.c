@@ -127,7 +127,8 @@ R_MapPlane
      || x2 >= viewwidth
      || y > viewheight)
     {
-	I_Error ("R_MapPlane: %i, %i at %i",x1,x2,y);
+        printf("R_MapPlane: %i, %i at %i\n", x1, x2, y);
+	//I_Error ("R_MapPlane: %i, %i at %i",x1,x2,y);
     }
 #endif
 

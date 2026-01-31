@@ -154,7 +154,8 @@ int fclose(FILE* stream) {
 
 size_t fread(void* ptr, size_t size, size_t nmemb, FILE* stream) {
     size_t total = size * nmemb;
-    return (size_t)syscall_file_read((uint64_t)stream, ptr, total);
+    size_t read = (size_t)syscall_file_read((uint64_t)stream, ptr, total);
+    return read;
 }
 
 size_t fwrite(const void* ptr, size_t size, size_t nmemb, FILE* stream) {
@@ -163,7 +164,8 @@ size_t fwrite(const void* ptr, size_t size, size_t nmemb, FILE* stream) {
 }
 
 int fseek(FILE* stream, long offset, int whence) {
-    return (int)syscall_file_seek((uint64_t)stream, offset, whence);
+    int result = (int)syscall_file_seek((uint64_t)stream, offset, whence);
+    return result;
 }
 
 long ftell(FILE* stream) {

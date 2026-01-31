@@ -14,7 +14,6 @@ void DG_Init()
 
 void DG_DrawFrame()
 {
-    printf("DG_DrawFrame\n");
     int doom_w = 640;
     int doom_h = 400;
 
@@ -23,13 +22,11 @@ void DG_DrawFrame()
 
 void DG_SleepMs(uint32_t ms)
 {
-    printf("DG_SleepMs\n");
     syscall_sleep(ms);
 }
 
 uint32_t DG_GetTicksMs()
 {
-    printf("DG_GetTicksMs\n");
     return (uint32_t)syscall_get_uptime();
 }
 
@@ -38,14 +35,14 @@ unsigned char *_was_pressed;
 
 #include "doomkeys.h"
 
-unsigned char convert_to_doom_key(uint32_t my_os_key)
+unsigned char convert_to_doom_key(uint32_t ascii_key)
 {
-    if (my_os_key >= 'A' && my_os_key <= 'Z')
+    if (ascii_key >= 'A' && ascii_key <= 'Z')
     {
-        my_os_key += ('a' - 'A');
+        ascii_key += ('a' - 'A');
     }
 
-    switch (my_os_key)
+    switch (ascii_key)
     {
     case 'w':
         return KEY_UPARROW;
@@ -68,20 +65,12 @@ unsigned char convert_to_doom_key(uint32_t my_os_key)
     }
 }
 
-uint32_t last_pressed_state = 0;
-
 int DG_GetKey(int *pressed, unsigned char *key)
 {
-    printf("DG_GetKey\n");
-    syscall_get_key(key, pressed);
-
-    if (*pressed == last_pressed_state)
-    {
-        return 0;
-    }
-
-    *key = convert_to_doom_key(*key);
-    last_pressed_state = *pressed;
+    uint32_t k, p;
+    syscall_get_key(&k, &p);
+    *key = convert_to_doom_key(k);
+    *pressed = (int)p;
 
     if (*key != 0)
     {
@@ -107,7 +96,7 @@ void _start()
 
     doomgeneric_Create(argc, argv);
 
-    puts("CReAtED");
+    puts("Created doomgeneric");
 
     while (1)
     {

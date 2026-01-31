@@ -2,7 +2,7 @@
 #include "string.h"
 
 #define HEAP_START_ADDRESS 0x100000000
-#define HEAP_SIZE (0xA00000)
+#define HEAP_SIZE (0xF00000)
 
 uint64_t _heap_start = HEAP_START_ADDRESS;
 uint64_t _heap_end = HEAP_START_ADDRESS + HEAP_SIZE;
@@ -18,13 +18,15 @@ typedef struct
 
 #pragma pack(pop)
 
-heap_header* free_list;
+heap_header* free_list; /// OBSOLETE (currently unused)
 
 
 void* malloc(size_t size) {
     size += sizeof(heap_header);
-    if (_heap_current + size > _heap_end)
+    if (_heap_current + size > _heap_end) {
+        printf("Heap overflow");
         return NULL;
+    }
 
     heap_header* ptr = (heap_header*)_heap_current;
     _heap_current += size;
@@ -85,6 +87,7 @@ int abs(int j) {
 }
 
 int system(const char* command) {
+    printf("Running command: %s\n", command);
     return 0;
 }
 

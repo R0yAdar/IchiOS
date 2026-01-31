@@ -13,11 +13,6 @@ typedef void (*syscall_handler_t)(void *ptr);
 framebuffer *_fb;
 syscall_handler_t _syscalls[1000] = {0};
 
-uint64_t get_time()
-{
-    return pit_get_current_time_ms();
-}
-
 inline void syscall(uint64_t id, void *ptr)
 {
     interrupt80(id, ptr);
@@ -29,10 +24,6 @@ void syscall_handler(uint64_t syscall_no, void *ptr)
     {
         _syscalls[syscall_no](ptr);
     }
-}
-
-void draw_screen()
-{
 }
 
 void sh_hello()
@@ -68,7 +59,7 @@ void sh_draw_char(void *ptr)
 
 void sh_puts(void *ptr)
 {
-    qemu_puts((char*)ptr);
+    qemu_puts((char *)ptr);
 }
 
 void sh_get_uptime(void *ptr)
@@ -80,7 +71,6 @@ void sh_get_uptime(void *ptr)
 void sh_file_ops(void *ptr)
 {
     sys_file_action *action = (sys_file_action *)ptr;
-
 
     switch (action->action)
     {
@@ -122,42 +112,78 @@ void sh_file_ops(void *ptr)
 
 void sh_draw_window(void *ptr)
 {
-    sys_draw_window *data = (sys_draw_window*)ptr;
+    sys_draw_window *data = (sys_draw_window *)ptr;
 
     framebuffer_draw_window(_fb, data->width, data->height, data->buffer);
 }
 
-uint32_t _key_last;
-uint32_t _key_was_pressed;
+typedef struct
+{
+    uint32_t key;
+    uint32_t pressed;
+} key_event;
 
+#define KEY_EVENTS_QUEUE_SIZE 256
 
+key_event *key_events = NULL;
+uint32_t key_events_write_index = 0;
+uint32_t key_events_read_index = 0;
+
+BOOL kybrd_is_recorded(uint8_t scancode, BOOL pressed) {
+    for (uint32_t i = key_events_read_index; i < key_events_write_index; i++) {
+        if (key_events[i].key == scancode && key_events[i].pressed == pressed) {
+            return TRUE;
+        }
+    }
+    
+    return FALSE;
+}
 
 void kybrd_press_callback(uint8_t scancode, BOOL pressed)
 {
-    _key_last = kybrd_key_to_ascii(scancode);
-	_key_was_pressed = pressed;
+    cli();
+    uint32_t key = kybrd_key_to_ascii(scancode);
+
+    if (!kybrd_is_recorded(key, pressed))
+    {
+        key_events[key_events_write_index].key = key;
+        key_events[key_events_write_index].pressed = pressed;
+        ++key_events_write_index;
+        key_events_write_index %= KEY_EVENTS_QUEUE_SIZE;
+    }
 }
 
 void sh_get_key(void *ptr)
 {
-    sys_get_key *data = (sys_get_key*)ptr;
+    sys_get_key *data = (sys_get_key *)ptr;
 
-    data->last_key = _key_last;
-    data->was_pressed = _key_was_pressed;
+    if (key_events_read_index == key_events_write_index)
+    {
+        data->last_key = 0;
+        data->was_pressed = 0;
+        return;
+    }
+
+    data->last_key = key_events[key_events_read_index].key;
+    data->was_pressed = key_events[key_events_read_index].pressed;
+
+    ++key_events_read_index;
+    key_events_read_index %= KEY_EVENTS_QUEUE_SIZE;
 }
 
 void syscall_init(framebuffer *fb)
 {
     _fb = fb;
+    key_events = (key_event *)kmalloc(sizeof(key_event) * KEY_EVENTS_QUEUE_SIZE);
     kybrd_set_event_callback(kybrd_press_callback);
+
     _syscalls[0] = (syscall_handler_t)sh_hello;
     _syscalls[1] = (syscall_handler_t)sh_sleep;
     _syscalls[2] = (syscall_handler_t)sh_echo;
     _syscalls[3] = (syscall_handler_t)sh_draw_char;
     _syscalls[4] = (syscall_handler_t)sh_puts;
     _syscalls[5] = (syscall_handler_t)sh_get_uptime;
-    _syscalls[SYSCALL_FILE_OPS_CODE] = (syscall_handler_t)sh_file_ops;
+    _syscalls[6] = (syscall_handler_t)sh_file_ops;
     _syscalls[7] = (syscall_handler_t)sh_draw_window;
     _syscalls[8] = (syscall_handler_t)sh_get_key;
-    
 }

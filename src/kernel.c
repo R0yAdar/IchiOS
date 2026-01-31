@@ -194,7 +194,7 @@ void clean_start()
 	{
 		framebuffer_clear(fb);
 	}
-
+	
 	file *exe = fopen("/files/doom.elf", READ);
 
 	if (!exe) {
@@ -210,6 +210,7 @@ void clean_start()
 		process_exec(p, exe);
 		scheduler_add_process(p);
 	}
+
 	qemu_log("Transferring control to scheduler");
 
 	syscall_init(fb);
