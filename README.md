@@ -1,3 +1,16 @@
-# Ichi
+# Ich1 いち
+My **first** (and probably last) attempt at writing an OS (x86_64)
 
-![image](https://github.com/user-attachments/assets/93821cc6-b624-4900-9e76-b3ebe66c3904)
+## Features
+* Legacy Bootloader (2 stage)
+* Basics: IDT, PIC, PIT
+* Drivers: PS/2 (keyboard), PCI, EXT2 (+VFS), AHCI, Framebuffer (VESA), VGA, Serial (QEMU output)
+* VMM, PMM, Basic Memory Protection via Paging
+* Processes + ELF loader
+* Scheduler + Multiprocessing (+sleep support, idle, blocked, etc.)
+* Basic Userspace + Small Syscalls Interface (demonstrates the concept, some are unsafe from a security perspective - easily fixable, but it's intended as a PoC)
+* Two Programs (seen running simultaneously in the DEMO):
+  * A simple example program
+  * A basic port of doomgeneric (that I've written a very minimal libc for)
+
+![ichi-demo](https://github.com/user-attachments/assets/07a7b922-f5ca-444f-a585-bf3b5fbc3e50)
