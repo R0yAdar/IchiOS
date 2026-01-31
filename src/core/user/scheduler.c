@@ -55,9 +55,14 @@ __attribute__((naked, noreturn)) void scheduler_switch()
 {
     should_switch = FALSE;
     _current_deadline = pit_get_current_time_ms() + SCHEDULER_TIME_PER_PROCESS_MS;
+    uint32_t search_count;
 
-    while (!_processes[++_current_process] || process_get_state(_processes[_current_process]) != PROCESS_READY)
+    while (
+        !_processes[++_current_process] || 
+        ((process_get_state(_processes[_current_process]) != PROCESS_READY &&
+        (process_get_state(_processes[_current_process]) != PROCESS_IDLE || search_count < SCHEDULER_PROCESS_COUNT))))
     {
+        ++search_count;
         if (_current_process == (SCHEDULER_PROCESS_COUNT - 1))
         {
             _current_process = 0;

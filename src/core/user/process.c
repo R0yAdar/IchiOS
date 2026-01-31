@@ -98,12 +98,12 @@ void process_init_idle(process_ctx *ctx)
 
     ctx->exec_ctx.rsp = 0x0;
     ctx->exec_ctx.rip = 0x1000;
-    ctx->state = PROCESS_READY;
+    ctx->state = PROCESS_IDLE;
 }
 
 void process_stop(process_ctx *ctx, volatile stack_layout *stack)
 {
-    if (ctx->state != PROCESS_BLOCKED) {
+    if (ctx->state != PROCESS_BLOCKED && ctx->state != PROCESS_IDLE) {
         ctx->state = PROCESS_READY;
     }
 
@@ -112,7 +112,10 @@ void process_stop(process_ctx *ctx, volatile stack_layout *stack)
 
 __attribute__((naked, noreturn)) void process_resume(process_ctx *ctx)
 {
-    ctx->state = PROCESS_ACTIVE;
+    if (ctx->state != PROCESS_IDLE) {
+        ctx->state = PROCESS_READY;
+    }
+    
     vmm_apply_pagetable(ctx->vmem_ctx);
 
     asm volatile(

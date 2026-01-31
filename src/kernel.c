@@ -218,8 +218,8 @@ void clean_start()
 		framebuffer_clear(fb);
 	}
 
-	file *exe = fopen("/files/doom.elf", READ);
-	
+	file *exe = fopen("/files/example.elf", READ);
+
 	if (!exe) {
 		qemu_log("Failed to open exe file");
 	}

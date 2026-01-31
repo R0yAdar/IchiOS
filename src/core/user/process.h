@@ -39,6 +39,7 @@ typedef enum {
     PROCESS_CREATED,
     PROCESS_READY,
     PROCESS_ACTIVE,
+    PROCESS_IDLE,
     PROCESS_BLOCKED
 } process_state;
 

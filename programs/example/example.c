@@ -27,7 +27,7 @@ void main() {
     const char* str = "Hello from userland!";
     while(1) { 
         syscall(0, NULL);
-		syscall(1, 100);
+		syscall(1, 500);
         syscall(2, str);
 
         draw_string(str);
