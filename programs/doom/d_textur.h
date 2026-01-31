@@ -15,16 +15,12 @@
 // DESCRIPTION:
 //	Typedefs related to to textures etc.,
 //	 isolated here to make it easier separating modules.
-//    
-
+//
 
 #ifndef __D_TEXTUR__
 #define __D_TEXTUR__
 
 #include "doomtype.h"
-
-
-
 
 //
 // Flats?
@@ -32,12 +28,9 @@
 // a pic is an unmasked block of pixels
 typedef struct
 {
-    byte		width;
-    byte		height;
-    byte		data;
+    byte width;
+    byte height;
+    byte data;
 } pic_t;
-
-
-
 
 #endif

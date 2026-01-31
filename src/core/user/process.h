@@ -18,7 +18,7 @@ typedef struct
     uint64_t rdx;
     uint64_t rcx;
     uint64_t rax;
-    
+
     uint64_t rbp;
     uint64_t rbx;
     uint64_t r12;
@@ -35,7 +35,8 @@ typedef struct
 
 #pragma pack(pop)
 
-typedef enum {
+typedef enum
+{
     PROCESS_CREATED,
     PROCESS_READY,
     PROCESS_ACTIVE,
@@ -43,13 +44,13 @@ typedef enum {
     PROCESS_BLOCKED
 } process_state;
 
-process_ctx* process_create();
+process_ctx *process_create();
 
-void process_exec(process_ctx* ctx, file* elf);
+void process_exec(process_ctx *ctx, file *elf);
 
 void process_init_idle(process_ctx *ctx);
 
-void process_stop(process_ctx *ctx, volatile stack_layout* stack);
+void process_stop(process_ctx *ctx, volatile stack_layout *stack);
 
 void process_resume(process_ctx *ctx);
 

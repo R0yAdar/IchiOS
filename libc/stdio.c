@@ -2,19 +2,24 @@
 #include "stdarg.h"
 #include "sysapi.h"
 
-static char* _itoa(long value, char* str, int base) {
+static char *_itoa(long value, char *str, int base)
+{
     char *rc, *ptr, *low;
-    if (base < 2 || base > 36) return str;
+    if (base < 2 || base > 36)
+        return str;
     rc = ptr = str;
-    if (value < 0 && base == 10) *ptr++ = '-';
+    if (value < 0 && base == 10)
+        *ptr++ = '-';
     low = ptr;
     long v = (value < 0 && base == 10) ? -value : value;
-    do {
+    do
+    {
         *ptr++ = "0123456789abcdefghijklmnopqrstuvwxyz"[v % base];
         v /= base;
     } while (v);
     *ptr-- = '\0';
-    while (low < ptr) {
+    while (low < ptr)
+    {
         char tmp = *low;
         *low++ = *ptr;
         *ptr-- = tmp;
@@ -22,65 +27,82 @@ static char* _itoa(long value, char* str, int base) {
     return rc;
 }
 
-int vsnprintf(char* s, size_t n, const char* fmt, va_list ap) {
+int vsnprintf(char *s, size_t n, const char *fmt, va_list ap)
+{
     size_t written = 0;
-    while (*fmt && written < (n - 1)) {
-        if (*fmt == '%') {
+    while (*fmt && written < (n - 1))
+    {
+        if (*fmt == '%')
+        {
             fmt++; // move past '%'
-            
+
             int precision = -1;
-            if (*fmt == '.') {
+            if (*fmt == '.')
+            {
                 fmt++; // move past '.'
                 precision = 0;
-                while (*fmt >= '0' && *fmt <= '9') {
+                while (*fmt >= '0' && *fmt <= '9')
+                {
                     precision = precision * 10 + (*fmt - '0');
                     fmt++;
                 }
             }
 
-            switch (*fmt) {
-                case 's': {
-                    char* str = va_arg(ap, char*);
-                    if (!str) str = "<null>";
-                    while (*str && written < (n - 1)) s[written++] = *str++;
-                    break;
-                }
-                case 'd':
-                case 'u':
-                case 'i': {
-                    char buf[32];
-                    _itoa(va_arg(ap, int), buf, 10);
-                    
-                    // Calculate leading zeros needed
-                    int len = 0;
-                    while (buf[len]) len++;
-                    int padding = (precision > len) ? (precision - len) : 0;
-
-                    // Write padding
-                    while (padding-- > 0 && written < (n - 1)) {
-                        s[written++] = '0';
-                    }
-                    // Write the number
-                    for (int i = 0; buf[i] && written < (n - 1); i++) {
-                        s[written++] = buf[i];
-                    }
-                    break;
-                }
-                case 'x':
-                case 'p': {
-                    char buf[32];
-                    _itoa(va_arg(ap, unsigned long), buf, 16);
-                    for (int i = 0; buf[i] && written < (n - 1); i++) s[written++] = buf[i];
-                    break;
-                }
-                case '%':
-                    s[written++] = '%';
-                    break;
-                default:
-                    s[written++] = *fmt;
-                    break;
+            switch (*fmt)
+            {
+            case 's':
+            {
+                char *str = va_arg(ap, char *);
+                if (!str)
+                    str = "<null>";
+                while (*str && written < (n - 1))
+                    s[written++] = *str++;
+                break;
             }
-        } else {
+            case 'd':
+            case 'u':
+            case 'i':
+            {
+                char buf[32];
+                _itoa(va_arg(ap, int), buf, 10);
+
+                // Calculate leading zeros needed
+                int len = 0;
+                while (buf[len])
+                    len++;
+                int padding = (precision > len) ? (precision - len) : 0;
+
+                // Write padding
+                while (padding-- > 0 && written < (n - 1))
+                {
+                    s[written++] = '0';
+                }
+                // Write the number
+                for (int i = 0; buf[i] && written < (n - 1); i++)
+                {
+                    s[written++] = buf[i];
+                }
+                break;
+            }
+            case 'x':
+            case 'p':
+            {
+                char buf[32];
+                _itoa(va_arg(ap, unsigned long), buf, 16);
+                for (int i = 0; buf[i] && written < (n - 1); i++)
+                    s[written++] = buf[i];
+                break;
+            }
+            case '%':
+                s[written++] = '%';
+                break;
+            default:
+                s[written++] = *fmt;
+                break;
+            }
+        }
+        else
+        {
             s[written++] = *fmt;
         }
         fmt++;
@@ -89,7 +111,8 @@ int vsnprintf(char* s, size_t n, const char* fmt, va_list ap) {
     return (int)written;
 }
 
-int printf(const char* format, ...) {
+int printf(const char *format, ...)
+{
     char buf[1024];
     va_list va;
     va_start(va, format);
@@ -99,27 +122,31 @@ int printf(const char* format, ...) {
     return ret;
 }
 
-int fprintf(FILE* stream, const char* format, ...) {
+int fprintf(FILE *stream, const char *format, ...)
+{
     char buf[1024];
     va_list va;
     va_start(va, format);
     int ret = vsnprintf(buf, sizeof(buf), format, va);
     va_end(va);
 
-    if (stream == stderr) {
+    if (stream == stderr)
+    {
         puts("ERR1:");
     }
 
     puts(format);
-    
+
     return ret;
 }
 
-int vfprintf(FILE* stream, const char* format, va_list vlist) {
+int vfprintf(FILE *stream, const char *format, va_list vlist)
+{
     char buf[1024];
     int ret = vsnprintf(buf, sizeof(buf), format, vlist);
 
-    if (stream == stderr) {
+    if (stream == stderr)
+    {
         puts("ERR2:");
     }
 
@@ -127,53 +154,62 @@ int vfprintf(FILE* stream, const char* format, va_list vlist) {
     return ret;
 }
 
-void snprintf(char *buffer, size_t len, char *fmt, ...) {
+void snprintf(char *buffer, size_t len, char *fmt, ...)
+{
     va_list va;
     va_start(va, fmt);
     vsnprintf(buffer, len, fmt, va);
     va_end(va);
 }
 
-int sscanf(const char *str, const char *format, ...) {
+int sscanf(const char *str, const char *format, ...)
+{
     puts("Scanning");
     return 0;
 }
 
-FILE* fopen(const char* filename, const char* mode) {
+FILE *fopen(const char *filename, const char *mode)
+{
     uint64_t fid;
     syscall_file_open(filename, &fid);
     printf("Opened file %d\n", fid);
-    return (FILE*)fid;
+    return (FILE *)fid;
 }
 
-int fclose(FILE* stream) {
+int fclose(FILE *stream)
+{
     puts("Closing file");
     syscall_file_close((uint64_t)stream);
     return 0;
 }
 
-size_t fread(void* ptr, size_t size, size_t nmemb, FILE* stream) {
+size_t fread(void *ptr, size_t size, size_t nmemb, FILE *stream)
+{
     size_t total = size * nmemb;
     size_t read = (size_t)syscall_file_read((uint64_t)stream, ptr, total);
     return read;
 }
 
-size_t fwrite(const void* ptr, size_t size, size_t nmemb, FILE* stream) {
+size_t fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream)
+{
     puts("Writing file");
     return 0;
 }
 
-int fseek(FILE* stream, long offset, int whence) {
+int fseek(FILE *stream, long offset, int whence)
+{
     int result = (int)syscall_file_seek((uint64_t)stream, offset, whence);
     return result;
 }
 
-long ftell(FILE* stream) {
+long ftell(FILE *stream)
+{
     puts("Telling file");
     return (long)syscall_file_tell((uint64_t)stream);
 }
 
-int feof(FILE* stream) {
+int feof(FILE *stream)
+{
     puts("Checking EOF");
     // Return 1 if current pos == file size
     return 0;
@@ -182,10 +218,12 @@ int feof(FILE* stream) {
 char buffer[1024] = {0};
 char buffer_index = 0;
 
-int putchar(int c) {
+int putchar(int c)
+{
     buffer[buffer_index++] = c;
 
-    if (buffer_index == 1023 || c == '\n') {
+    if (buffer_index == 1023 || c == '\n')
+    {
         syscall_puts(buffer);
         buffer_index = 0;
         for (size_t i = 0; i < 1024; i++)
@@ -193,27 +231,32 @@ int putchar(int c) {
             buffer[i] = 0;
         }
     }
-    
+
     return c;
 }
 
-int puts(const char* s) {
-    while (*s) putchar(*s++);
+int puts(const char *s)
+{
+    while (*s)
+        putchar(*s++);
     putchar('\n');
     return 0;
 }
 
-int remove(const char* filename) {
+int remove(const char *filename)
+{
     puts("Removing");
     return 0;
 }
 
-int rename(const char* old, const char* new) {
+int rename(const char *old, const char *new)
+{
     puts("Renaming");
     return 0;
 }
 
-int fflush(FILE* stream) {
+int fflush(FILE *stream)
+{
     puts("Flushing stream");
     return 0;
 }

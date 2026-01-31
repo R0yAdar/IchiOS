@@ -15,7 +15,6 @@
 // DESCRIPTION:
 //
 
-
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -24,13 +23,10 @@
 #include "doomtype.h"
 #include "i_system.h"
 #include "m_misc.h"
-#include "m_argv.h"  // haleyjd 20110212: warning fix
+#include "m_argv.h" // haleyjd 20110212: warning fix
 
-int		myargc;
-char**		myargv;
-
-
-
+int myargc;
+char **myargv;
 
 //
 // M_CheckParm
@@ -46,8 +42,8 @@ int M_CheckParmWithArgs(char *check, int num_args)
 
     for (i = 1; i < myargc - num_args; i++)
     {
-	if (!strcasecmp(check, myargv[i]))
-	    return i;
+        if (!strcasecmp(check, myargv[i]))
+            return i;
     }
 
     return 0;
@@ -70,7 +66,7 @@ int M_CheckParm(char *check)
     return M_CheckParmWithArgs(check, 0);
 }
 
-#define MAXARGVS        100
+#define MAXARGVS 100
 
 static void LoadResponseFile(int argv_index)
 {
@@ -91,7 +87,7 @@ static void LoadResponseFile(int argv_index)
 
     if (handle == NULL)
     {
-        printf ("\nNo such response file!");
+        printf("\nNo such response file!");
 #if ORIGCODE
         exit(1);
 #endif
@@ -132,7 +128,7 @@ static void LoadResponseFile(int argv_index)
 
     // Copy all the arguments in the list up to the response file
 
-    for (i=0; i<argv_index; ++i)
+    for (i = 0; i < argv_index; ++i)
     {
         newargv[i] = myargv[i];
         ++newargc;
@@ -141,11 +137,11 @@ static void LoadResponseFile(int argv_index)
     infile = file;
     k = 0;
 
-    while(k < size)
+    while (k < size)
     {
         // Skip past space characters to the next argument
 
-        while(k < size && isspace((int)infile[k]))
+        while (k < size && isspace((int)infile[k]))
         {
             ++k;
         }
@@ -190,7 +186,7 @@ static void LoadResponseFile(int argv_index)
 
             newargv[newargc++] = &infile[k];
 
-            while(k < size && !isspace((int)infile[k]))
+            while (k < size && !isspace((int)infile[k]))
             {
                 ++k;
             }
@@ -205,7 +201,7 @@ static void LoadResponseFile(int argv_index)
 
     // Add arguments following the response file argument
 
-    for (i=argv_index + 1; i<myargc; ++i)
+    for (i = argv_index + 1; i < myargc; ++i)
     {
         newargv[newargc] = myargv[i];
         ++newargc;
@@ -234,7 +230,7 @@ static void LoadResponseFile(int argv_index)
 
 void M_FindResponseFile(void)
 {
-    int             i;
+    int i;
 
     for (i = 1; i < myargc; i++)
     {
@@ -262,4 +258,3 @@ char *M_GetExecutableName(void)
         return sep + 1;
     }
 }
-

@@ -26,16 +26,14 @@
 #include "txt_main.h"
 #endif
 
-
 #ifdef __DJGPP__
 #include <go32.h>
-#endif  // __DJGPP__
-
+#endif // __DJGPP__
 
 #define ENDOOM_W 80
 #define ENDOOM_H 25
 
-// 
+//
 // Displays the text mode ending screen after the game quits
 //
 
@@ -58,7 +56,7 @@ void I_Endoom(byte *endoom_data)
 
     indent = (ENDOOM_W - TXT_SCREEN_W) / 2;
 
-    for (y=0; y<TXT_SCREEN_H; ++y)
+    for (y = 0; y < TXT_SCREEN_H; ++y)
     {
         memcpy(screendata + (y * TXT_SCREEN_W * 2),
                endoom_data + (y * ENDOOM_W + indent) * 2,
@@ -89,13 +87,13 @@ void I_Endoom(byte *endoom_data)
 
     // move cursor to bottom
     // there's a direct call for moving cursor somewhere but this is simpler to write
-    for (y = 0; y < ENDOOM_H; y++) {
+    for (y = 0; y < ENDOOM_H; y++)
+    {
         puts("\n");
     }
 
     // allegro exit should have been run already and so we should be in text mode again
-    movedata(_my_ds(), (unsigned) endoom_data, _dos_ds, 0xB8000UL, ENDOOM_W * ENDOOM_H * 2);
+    movedata(_my_ds(), (unsigned)endoom_data, _dos_ds, 0xB8000UL, ENDOOM_W * ENDOOM_H * 2);
 
 #endif
 }
-

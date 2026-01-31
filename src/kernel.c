@@ -75,7 +75,7 @@ void __switch_kernel_stack()
 	void *stack_top = (void *)((char *)stack + KERNEL_STACK_SIZE * PAGE_SIZE);
 
 	_top_of_kernel_stack = stack_top;
-	
+
 	qemu_logf("New stack top: %x", stack_top);
 	switch_stack(stack_top, clean_start);
 }
@@ -194,24 +194,26 @@ void clean_start()
 	{
 		framebuffer_clear(fb);
 	}
-	
+
 	file *exe = fopen("/files/doom.elf", READ);
 	file *exe2 = fopen("/files/example.elf", READ);
 
-	if (!exe || !exe2) {
+	if (!exe || !exe2)
+	{
 		qemu_log("Failed to open exe file");
 	}
-	else {
+	else
+	{
 		scheduler_init();
-		process_ctx* p1 = process_create();
+		process_ctx *p1 = process_create();
 		process_init_idle(p1);
 		scheduler_add_process(p1);
 
-		process_ctx* p = process_create();
+		process_ctx *p = process_create();
 		process_exec(p, exe);
 		scheduler_add_process(p);
 
-		process_ctx* p2 = process_create();
+		process_ctx *p2 = process_create();
 		process_exec(p2, exe2);
 		scheduler_add_process(p2);
 	}
@@ -220,7 +222,7 @@ void clean_start()
 
 	syscall_init(fb);
 	scheduler_transfer_ctrl();
-	
+
 	qemu_log("BYE BYE");
 
 	while (1)

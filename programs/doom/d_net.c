@@ -62,9 +62,9 @@ static void PlayerQuitGame(player_t *player)
 
     // TODO: check if it is sensible to do this:
 
-    if (demorecording) 
+    if (demorecording)
     {
-        G_CheckDemoStatus ();
+        G_CheckDemoStatus();
     }
 }
 
@@ -89,18 +89,16 @@ static void RunTic(ticcmd_t *cmds, boolean *ingame)
     // run a tic.
 
     if (advancedemo)
-        D_DoAdvanceDemo ();
+        D_DoAdvanceDemo();
 
-    G_Ticker ();
+    G_Ticker();
 }
 
 static loop_interface_t doom_loop_interface = {
     D_ProcessEvents,
     G_BuildTiccmd,
     RunTic,
-    M_Ticker
-};
-
+    M_Ticker};
 
 // Load game settings from the specified structure and
 // set global variables.
@@ -152,8 +150,7 @@ static void SaveGameSettings(net_gamesettings_t *settings)
     settings->respawn_monsters = respawnparm;
     settings->timelimit = timelimit;
 
-    settings->lowres_turn = M_CheckParm("-record") > 0
-                         && M_CheckParm("-longtics") == 0;
+    settings->lowres_turn = M_CheckParm("-record") > 0 && M_CheckParm("-longtics") == 0;
 }
 
 static void InitConnectData(net_connect_data_t *connect_data)
@@ -173,7 +170,7 @@ static void InitConnectData(net_connect_data_t *connect_data)
         connect_data->drone = true;
     }
 
-    //! 
+    //!
     // @category net
     //
     // Run as the right screen in three screen mode.
@@ -196,8 +193,7 @@ static void InitConnectData(net_connect_data_t *connect_data)
 
     // Are we recording a demo? Possibly set lowres turn mode
 
-    connect_data->lowres_turn = M_CheckParm("-record") > 0
-                             && M_CheckParm("-longtics") == 0;
+    connect_data->lowres_turn = M_CheckParm("-record") > 0 && M_CheckParm("-longtics") == 0;
 
     // Read checksums of our WAD directory and dehacked information
 
@@ -237,7 +233,7 @@ void D_ConnectNetGame(void)
 // D_CheckNetGame
 // Works out player numbers among the net participants
 //
-void D_CheckNetGame (void)
+void D_CheckNetGame(void)
 {
     net_gamesettings_t settings;
 
@@ -256,7 +252,7 @@ void D_CheckNetGame (void)
                startskill, deathmatch, startmap, startepisode);
 
     DEH_printf("player %i of %i (%i nodes)\n",
-               consoleplayer+1, settings.num_players, settings.num_players);
+               consoleplayer + 1, settings.num_players, settings.num_players);
 
     // Show players here; the server might have specified a time limit
 
@@ -267,7 +263,7 @@ void D_CheckNetGame (void)
         if (timelimit == 20 && M_CheckParm("-avg"))
         {
             DEH_printf("Austin Virtual Gaming: Levels will end "
-                           "after 20 minutes\n");
+                       "after 20 minutes\n");
         }
         else
         {
@@ -278,4 +274,3 @@ void D_CheckNetGame (void)
         }
     }
 }
-

@@ -9,7 +9,8 @@
 #define PCI_COMMAND_MASTER (1 << 2)
 #define PCI_COMMAND_INT_DISABLE (1 << 10)
 
-typedef enum {
+typedef enum
+{
     OLD = 0x0,
     MASS_STORAGE = 0x1,
     NETWORK = 0x2,
@@ -32,7 +33,8 @@ typedef enum {
     UNKNOWN = 0x13
 } DEVICE_CLASS_TYPE;
 
-typedef struct {
+typedef struct
+{
     uint8_t bus;
     uint8_t device;
     uint8_t function;
@@ -52,10 +54,10 @@ pci_device pci_get_device(uint16_t vendor, uint16_t device);
 
 pci_device pci_get_by_class(uint8_t class_code, uint8_t subclass, uint8_t prog_if);
 
-void pci_enable_mmio(pci_device* desc);
+void pci_enable_mmio(pci_device *desc);
 
-void pci_enable_mastering(pci_device* desc);
+void pci_enable_mastering(pci_device *desc);
 
-void pci_enable_interrupts(pci_device* desc);
+void pci_enable_interrupts(pci_device *desc);
 
 #endif

@@ -58,9 +58,9 @@ __attribute__((naked, noreturn)) void scheduler_switch()
     uint32_t search_count;
 
     while (
-        !_processes[++_current_process] || 
+        !_processes[++_current_process] ||
         ((process_get_state(_processes[_current_process]) != PROCESS_READY &&
-        (process_get_state(_processes[_current_process]) != PROCESS_IDLE || search_count < SCHEDULER_PROCESS_COUNT))))
+          (process_get_state(_processes[_current_process]) != PROCESS_IDLE || search_count < SCHEDULER_PROCESS_COUNT))))
     {
         ++search_count;
         if (_current_process == (SCHEDULER_PROCESS_COUNT - 1))

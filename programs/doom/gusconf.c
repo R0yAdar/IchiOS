@@ -20,7 +20,6 @@
 //     DMXGUS lump into an equivalent Timidity configuration file.
 //
 
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -214,8 +213,7 @@ static boolean WriteTimidityConfig(char *path, gus_config_t *config)
 
     for (i = 0; i < 128; ++i)
     {
-        if (config->mapping[i] >= 0 && config->mapping[i] < MAX_INSTRUMENTS
-         && config->patch_names[config->mapping[i]] != NULL)
+        if (config->mapping[i] >= 0 && config->mapping[i] < MAX_INSTRUMENTS && config->patch_names[config->mapping[i]] != NULL)
         {
             fprintf(fstream, "%i %s\n",
                     i, config->patch_names[config->mapping[i]]);
@@ -226,8 +224,7 @@ static boolean WriteTimidityConfig(char *path, gus_config_t *config)
 
     for (i = 128 + 25; i < MAX_INSTRUMENTS; ++i)
     {
-        if (config->mapping[i] >= 0 && config->mapping[i] < MAX_INSTRUMENTS
-         && config->patch_names[config->mapping[i]] != NULL)
+        if (config->mapping[i] >= 0 && config->mapping[i] < MAX_INSTRUMENTS && config->patch_names[config->mapping[i]] != NULL)
         {
             fprintf(fstream, "%i %s\n",
                     i - 128, config->patch_names[config->mapping[i]]);
@@ -268,4 +265,3 @@ boolean GUS_WriteConfig(char *path)
 
     return result;
 }
-

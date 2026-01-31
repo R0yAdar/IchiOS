@@ -71,12 +71,12 @@ static int snd_mport = 0;
 
 // Compiled-in sound modules:
 
-static sound_module_t *sound_modules[] = 
-{
-    #ifdef FEATURE_SOUND
-    &DG_sound_module,
-    #endif
-    NULL,
+static sound_module_t *sound_modules[] =
+    {
+#ifdef FEATURE_SOUND
+        &DG_sound_module,
+#endif
+        NULL,
 };
 
 // Check if a sound device is in the given list of devices
@@ -86,7 +86,7 @@ static boolean SndDeviceInList(snddevice_t device, snddevice_t *list,
 {
     int i;
 
-    for (i=0; i<len; ++i)
+    for (i = 0; i < len; ++i)
     {
         if (device == list[i])
         {
@@ -106,12 +106,12 @@ static void InitSfxModule(boolean use_sfx_prefix)
 
     sound_module = NULL;
 
-    for (i=0; sound_modules[i] != NULL; ++i)
+    for (i = 0; sound_modules[i] != NULL; ++i)
     {
         // Is the sfx device in the list of devices supported by
         // this module?
 
-        if (SndDeviceInList(snd_sfxdevice, 
+        if (SndDeviceInList(snd_sfxdevice,
                             sound_modules[i]->sound_devices,
                             sound_modules[i]->num_sound_devices))
         {
@@ -142,7 +142,7 @@ static void InitMusicModule(void)
 //
 
 void I_InitSound(boolean use_sfx_prefix)
-{  
+{
     boolean nosound, nosfx, nomusic;
 
     //!
@@ -156,7 +156,7 @@ void I_InitSound(boolean use_sfx_prefix)
     //!
     // @vanilla
     //
-    // Disable sound effects. 
+    // Disable sound effects.
     //
 
     nosfx = M_CheckParm("-nosfx") > 0;
@@ -177,11 +177,9 @@ void I_InitSound(boolean use_sfx_prefix)
         // the TIMIDITY_CFG environment variable here before SDL_mixer
         // is opened.
 
-        if (!nomusic
-         && (snd_musicdevice == SNDDEVICE_GENMIDI
-          || snd_musicdevice == SNDDEVICE_GUS))
+        if (!nomusic && (snd_musicdevice == SNDDEVICE_GENMIDI || snd_musicdevice == SNDDEVICE_GUS))
         {
-            //I_InitTimidityConfig();
+            // I_InitTimidityConfig();
         }
 
         if (!nosfx)
@@ -194,7 +192,6 @@ void I_InitSound(boolean use_sfx_prefix)
             InitMusicModule();
         }
     }
-
 }
 
 void I_ShutdownSound(void)
@@ -212,7 +209,7 @@ void I_ShutdownSound(void)
 
 int I_GetSfxLumpNum(sfxinfo_t *sfxinfo)
 {
-    if (sound_module != NULL) 
+    if (sound_module != NULL)
     {
         return sound_module->GetSfxLumpNum(sfxinfo);
     }
@@ -302,13 +299,13 @@ void I_PrecacheSounds(sfxinfo_t *sounds, int num_sounds)
 {
     if (sound_module != NULL && sound_module->CacheSounds != NULL)
     {
-	sound_module->CacheSounds(sounds, num_sounds);
+        sound_module->CacheSounds(sounds, num_sounds);
     }
 }
 
 void I_InitMusic(void)
 {
-    if(music_module != NULL)
+    if (music_module != NULL)
     {
         music_module->Init();
     }
@@ -316,7 +313,6 @@ void I_InitMusic(void)
 
 void I_ShutdownMusic(void)
 {
-
 }
 
 void I_SetMusicVolume(int volume)
@@ -389,7 +385,6 @@ boolean I_MusicIsPlaying(void)
     {
         return false;
     }
-    
 }
 
 void I_BindSoundVariables(void)
@@ -397,19 +392,19 @@ void I_BindSoundVariables(void)
     extern int use_libsamplerate;
     extern float libsamplerate_scale;
 
-    M_BindVariable("snd_musicdevice",   &snd_musicdevice);
-    M_BindVariable("snd_sfxdevice",     &snd_sfxdevice);
-    M_BindVariable("snd_sbport",        &snd_sbport);
-    M_BindVariable("snd_sbirq",         &snd_sbirq);
-    M_BindVariable("snd_sbdma",         &snd_sbdma);
-    M_BindVariable("snd_mport",         &snd_mport);
+    M_BindVariable("snd_musicdevice", &snd_musicdevice);
+    M_BindVariable("snd_sfxdevice", &snd_sfxdevice);
+    M_BindVariable("snd_sbport", &snd_sbport);
+    M_BindVariable("snd_sbirq", &snd_sbirq);
+    M_BindVariable("snd_sbdma", &snd_sbdma);
+    M_BindVariable("snd_mport", &snd_mport);
     M_BindVariable("snd_maxslicetime_ms", &snd_maxslicetime_ms);
-    M_BindVariable("snd_musiccmd",      &snd_musiccmd);
-    M_BindVariable("snd_samplerate",    &snd_samplerate);
-    M_BindVariable("snd_cachesize",     &snd_cachesize);
+    M_BindVariable("snd_musiccmd", &snd_musiccmd);
+    M_BindVariable("snd_samplerate", &snd_samplerate);
+    M_BindVariable("snd_cachesize", &snd_cachesize);
 
 #ifdef FEATURE_SOUND
-    M_BindVariable("use_libsamplerate",   &use_libsamplerate);
+    M_BindVariable("use_libsamplerate", &use_libsamplerate);
     M_BindVariable("libsamplerate_scale", &libsamplerate_scale);
 #endif
 
@@ -417,4 +412,3 @@ void I_BindSoundVariables(void)
     // to crash when it looped.  If this is an old SDL_mixer version,
     // disable MIDI.
 }
-

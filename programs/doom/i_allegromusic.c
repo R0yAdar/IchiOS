@@ -16,7 +16,6 @@
 //	System interface for music.
 //
 
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -44,18 +43,14 @@
 #include <allegro/sound.h>
 #include <allegro/system.h>
 
-
 #define MAXMIDLENGTH (96 * 1024)
 #define MID_HEADER_MAGIC "MThd"
 #define MUS_HEADER_MAGIC "MUS\x1a"
 
-
 static boolean music_initialized = false;
-
 
 static boolean musicpaused = false;
 static int current_music_volume;
-
 
 // Currently playing music track.
 MIDI *current_track_music = NULL;
@@ -63,15 +58,12 @@ MIDI *current_track_music = NULL;
 // If true, the currently playing track is being played on loop.
 static boolean current_track_loop;
 
-
-
 // Shutdown music
 static void I_Allegro_ShutdownMusic(void)
 {
 	// nothing here
 	// TODO: stop song?
 }
-
 
 // Initialize music subsystem
 static boolean I_Allegro_InitMusic(void)
@@ -82,7 +74,6 @@ static boolean I_Allegro_InitMusic(void)
 	return true;
 }
 
-
 // Set music volume (0 - 127)
 static void I_Allegro_SetMusicVolume(int volume)
 {
@@ -91,7 +82,6 @@ static void I_Allegro_SetMusicVolume(int volume)
 	// allegro range 0 - 255
 	set_volume(digivol, volume * 2);
 }
-
 
 // Start playing a mid
 static void I_Allegro_PlaySong(void *handle, boolean looping)
@@ -108,15 +98,15 @@ static void I_Allegro_PlaySong(void *handle, boolean looping)
 		return;
 	}
 
-	current_track_music = (MIDI *) handle;
+	current_track_music = (MIDI *)handle;
 	current_track_loop = looping;
 
 	retval = play_midi(current_track_music, looping);
-	if (retval < 0) {
+	if (retval < 0)
+	{
 		fprintf(stderr, "Error playing midi: %d \"%s\"\n", retval, allegro_error);
 	}
 }
-
 
 static void I_Allegro_PauseSong(void)
 {
@@ -130,7 +120,6 @@ static void I_Allegro_PauseSong(void)
 	midi_pause();
 }
 
-
 static void I_Allegro_ResumeSong(void)
 {
 	if (!music_initialized)
@@ -142,7 +131,6 @@ static void I_Allegro_ResumeSong(void)
 
 	midi_resume();
 }
-
 
 static void I_Allegro_StopSong(void)
 {
@@ -156,10 +144,9 @@ static void I_Allegro_StopSong(void)
 	current_track_music = NULL;
 }
 
-
 static void I_Allegro_UnRegisterSong(void *handle)
 {
-	MIDI *midi = (MIDI *) handle;
+	MIDI *midi = (MIDI *)handle;
 
 	if (!music_initialized)
 	{
@@ -174,40 +161,37 @@ static void I_Allegro_UnRegisterSong(void *handle)
 	destroy_midi(midi);
 }
 
-
 // Determine whether memory block is a .mid file
 static boolean IsMid(byte *mem, int len)
 {
-    return len > 4 && !memcmp(mem, "MThd", 4);
+	return len > 4 && !memcmp(mem, "MThd", 4);
 }
-
 
 static boolean ConvertMus(byte *musdata, int len, char *filename)
 {
-    MEMFILE *instream;
-    MEMFILE *outstream;
-    void *outbuf;
-    size_t outbuf_len;
-    int result;
+	MEMFILE *instream;
+	MEMFILE *outstream;
+	void *outbuf;
+	size_t outbuf_len;
+	int result;
 
-    instream = mem_fopen_read(musdata, len);
-    outstream = mem_fopen_write();
+	instream = mem_fopen_read(musdata, len);
+	outstream = mem_fopen_write();
 
-    result = mus2mid(instream, outstream);
+	result = mus2mid(instream, outstream);
 
-    if (result == 0)
-    {
-        mem_get_buf(outstream, &outbuf, &outbuf_len);
+	if (result == 0)
+	{
+		mem_get_buf(outstream, &outbuf, &outbuf_len);
 
-        M_WriteFile(filename, outbuf, outbuf_len);
-    }
+		M_WriteFile(filename, outbuf, outbuf_len);
+	}
 
-    mem_fclose(instream);
-    mem_fclose(outstream);
+	mem_fclose(instream);
+	mem_fclose(outstream);
 
-    return result;
+	return result;
 }
-
 
 static void *I_Allegro_RegisterSong(void *data, int len)
 {
@@ -250,7 +234,6 @@ static void *I_Allegro_RegisterSong(void *data, int len)
 	return music;
 }
 
-
 // Is the song playing?
 static boolean I_Allegro_MusicIsPlaying(void)
 {
@@ -262,13 +245,11 @@ static boolean I_Allegro_MusicIsPlaying(void)
 	return (current_track_music != NULL) && (midi_pos > 0);
 }
 
-
 // Get position in substitute music track, in seconds since start of track.
 static double GetMusicPosition(void)
 {
 	return midi_time;
 }
-
 
 // Poll music position; if we have passed the loop point end position
 // then we need to go back.
@@ -277,32 +258,29 @@ static void I_Allegro_PollMusic(void)
 	// nothing here, allegro takes care of it
 }
 
-
 static snddevice_t music_allegro_devices[] =
-{
-	SNDDEVICE_PAS,
-	SNDDEVICE_GUS,
-	SNDDEVICE_WAVEBLASTER,
-	SNDDEVICE_SOUNDCANVAS,
-	SNDDEVICE_GENMIDI,
-	SNDDEVICE_AWE32,
+	{
+		SNDDEVICE_PAS,
+		SNDDEVICE_GUS,
+		SNDDEVICE_WAVEBLASTER,
+		SNDDEVICE_SOUNDCANVAS,
+		SNDDEVICE_GENMIDI,
+		SNDDEVICE_AWE32,
 };
-
 
 music_module_t DG_music_module =
-{
-	music_allegro_devices,
-	arrlen(music_allegro_devices),
-	I_Allegro_InitMusic,
-	I_Allegro_ShutdownMusic,
-	I_Allegro_SetMusicVolume,
-	I_Allegro_PauseSong,
-	I_Allegro_ResumeSong,
-	I_Allegro_RegisterSong,
-	I_Allegro_UnRegisterSong,
-	I_Allegro_PlaySong,
-	I_Allegro_StopSong,
-	I_Allegro_MusicIsPlaying,
-	I_Allegro_PollMusic,
+	{
+		music_allegro_devices,
+		arrlen(music_allegro_devices),
+		I_Allegro_InitMusic,
+		I_Allegro_ShutdownMusic,
+		I_Allegro_SetMusicVolume,
+		I_Allegro_PauseSong,
+		I_Allegro_ResumeSong,
+		I_Allegro_RegisterSong,
+		I_Allegro_UnRegisterSong,
+		I_Allegro_PlaySong,
+		I_Allegro_StopSong,
+		I_Allegro_MusicIsPlaying,
+		I_Allegro_PollMusic,
 };
-

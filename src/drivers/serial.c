@@ -75,7 +75,7 @@ void qemu_log(const char *str)
    write_serial('\n');
 }
 
-void qemu_puts(char* str)
+void qemu_puts(char *str)
 {
    while (*str != '\0')
    {

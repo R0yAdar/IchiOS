@@ -1,50 +1,61 @@
 #include "cstring.h"
 
-int memcmp(const uint8_t* left, const uint8_t* right, size_t len) {
-    for (size_t i = 0; i < len; i++) {
-        if (left[i] != right[i]) {
+int memcmp(const uint8_t *left, const uint8_t *right, size_t len)
+{
+    for (size_t i = 0; i < len; i++)
+    {
+        if (left[i] != right[i])
+        {
             return left[i] - right[i];
         }
     }
-    
+
     return 0;
 }
 
-void* memcpy(void* dest, void* src, uint64_t count) {
-    for(uint64_t i = 0; i < count; ++i) {
-        *((char*)(dest) + i) = *((char*)(src) + i);
+void *memcpy(void *dest, void *src, uint64_t count)
+{
+    for (uint64_t i = 0; i < count; ++i)
+    {
+        *((char *)(dest) + i) = *((char *)(src) + i);
     }
 
     return dest;
 }
 
-void* memset(void* dest, uint8_t value, uint64_t count) {
-    for(uint64_t i = 0; i < count; ++i) {
-        *((char*)(dest) + i) = value;
+void *memset(void *dest, uint8_t value, uint64_t count)
+{
+    for (uint64_t i = 0; i < count; ++i)
+    {
+        *((char *)(dest) + i) = value;
     }
 
     return dest;
 }
 
-int number_as_string(uint64_t value, char* buffer, int base) {
+int number_as_string(uint64_t value, char *buffer, int base)
+{
     uint8_t pos = 0;
     uint8_t len;
 
     while (value > 0)
     {
         char c = '0' + value % base;
-        if (c > '9') c += 'A' - '0' - 10;
+        if (c > '9')
+            c += 'A' - '0' - 10;
         buffer[pos++] = c;
         value /= base;
     }
 
-    if (pos == 0){
+    if (pos == 0)
+    {
         buffer[pos++] = '0';
     }
 
     len = --pos;
-    
-    while (pos > len / 2) {
+
+    while (pos > len / 2)
+    {
         char temp = buffer[len - pos];
         buffer[len - pos] = buffer[pos];
         buffer[pos] = temp;
@@ -55,7 +66,8 @@ int number_as_string(uint64_t value, char* buffer, int base) {
 }
 
 // https://wiki.osdev.org/User:A22347/Printf
-int vsprintf(char* s, const char* format, va_list arg) {
+int vsprintf(char *s, const char *format, va_list arg)
+{
     while (format[0] != '\0')
     {
         if (format[0] == '%')
@@ -76,7 +88,7 @@ int vsprintf(char* s, const char* format, va_list arg) {
             }
             else if (format[0] == 's')
             {
-                char* str = va_arg(arg, char*);
+                char *str = va_arg(arg, char *);
                 while (*str != '\0')
                 {
                     *s = *str;

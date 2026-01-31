@@ -1,3 +1,4 @@
-float fabs(float x) {
+float fabs(float x)
+{
     return 0.0;
 }

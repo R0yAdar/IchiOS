@@ -1,3 +1,5 @@
+/// Very incomplete implementation of syscalls, rushed for minimal doom
+
 #include "syscall.h"
 #include "vmm.h"
 #include "vfs.h"

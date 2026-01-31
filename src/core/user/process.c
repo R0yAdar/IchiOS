@@ -12,7 +12,8 @@
 
 uint64_t _pid = 0;
 
-uint64_t get_pid() {
+uint64_t get_pid()
+{
     return _pid++;
 }
 
@@ -103,7 +104,8 @@ void process_init_idle(process_ctx *ctx)
 
 void process_stop(process_ctx *ctx, volatile stack_layout *stack)
 {
-    if (ctx->state != PROCESS_BLOCKED && ctx->state != PROCESS_IDLE) {
+    if (ctx->state != PROCESS_BLOCKED && ctx->state != PROCESS_IDLE)
+    {
         ctx->state = PROCESS_READY;
     }
 
@@ -112,10 +114,11 @@ void process_stop(process_ctx *ctx, volatile stack_layout *stack)
 
 __attribute__((naked, noreturn)) void process_resume(process_ctx *ctx)
 {
-    if (ctx->state != PROCESS_IDLE) {
+    if (ctx->state != PROCESS_IDLE)
+    {
         ctx->state = PROCESS_READY;
     }
-    
+
     vmm_apply_pagetable(ctx->vmem_ctx);
 
     asm volatile(
@@ -159,19 +162,23 @@ __attribute__((naked, noreturn)) void process_resume(process_ctx *ctx)
         : "ax", "memory");
 }
 
-void process_block(process_ctx *ctx) {
+void process_block(process_ctx *ctx)
+{
     ctx->state = PROCESS_BLOCKED;
 }
 
-void process_unblock(process_ctx *ctx) {
+void process_unblock(process_ctx *ctx)
+{
     ctx->state = PROCESS_READY;
 }
 
-process_state process_get_state(process_ctx *ctx) {
+process_state process_get_state(process_ctx *ctx)
+{
     return ctx->state;
 }
 
-uint64_t process_get_pid(process_ctx *ctx) {
+uint64_t process_get_pid(process_ctx *ctx)
+{
     return ctx->pid;
 }
 

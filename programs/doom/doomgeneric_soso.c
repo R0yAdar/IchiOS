@@ -1,4 +1,4 @@
-//doomgeneric for soso os
+// doomgeneric for soso os
 
 #include "doomkeys.h"
 #include "m_argv.h"
@@ -16,7 +16,7 @@
 #include <termios.h>
 
 static int FrameBufferFd = -1;
-static int* FrameBuffer = 0;
+static int *FrameBuffer = 0;
 
 static int KeyboardFd = -1;
 
@@ -90,34 +90,33 @@ static unsigned char convertToDoomKey(unsigned char scancode)
 
 static void addKeyToQueue(int pressed, unsigned char keyCode)
 {
-	//printf("key hex %x decimal %d\n", keyCode, keyCode);
+    // printf("key hex %x decimal %d\n", keyCode, keyCode);
 
-        unsigned char key = convertToDoomKey(keyCode);
+    unsigned char key = convertToDoomKey(keyCode);
 
-        unsigned short keyData = (pressed << 8) | key;
+    unsigned short keyData = (pressed << 8) | key;
 
-        s_KeyQueue[s_KeyQueueWriteIndex] = keyData;
-        s_KeyQueueWriteIndex++;
-        s_KeyQueueWriteIndex %= KEYQUEUE_SIZE;
+    s_KeyQueue[s_KeyQueueWriteIndex] = keyData;
+    s_KeyQueueWriteIndex++;
+    s_KeyQueueWriteIndex %= KEYQUEUE_SIZE;
 }
-
 
 struct termios orig_termios;
 
 void disableRawMode()
 {
-  //printf("returning original termios\n");
-  tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_termios);
+    // printf("returning original termios\n");
+    tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_termios);
 }
 
 void enableRawMode()
 {
-  tcgetattr(STDIN_FILENO, &orig_termios);
-  atexit(disableRawMode);
-  struct termios raw = orig_termios;
-  raw.c_lflag &= ~(ECHO);
-  raw.c_cc[VMIN] = 0;
-  tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
+    tcgetattr(STDIN_FILENO, &orig_termios);
+    atexit(disableRawMode);
+    struct termios raw = orig_termios;
+    raw.c_lflag &= ~(ECHO);
+    raw.c_cc[VMIN] = 0;
+    tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
 }
 
 void DG_Init()
@@ -142,7 +141,7 @@ void DG_Init()
 
         FrameBuffer = mmap(NULL, s_ScreenWidth * s_ScreenHeight * 4, PROT_READ | PROT_WRITE, 0, FrameBufferFd, 0);
 
-        if (FrameBuffer != (int*)-1)
+        if (FrameBuffer != (int *)-1)
         {
             printf("FrameBuffer mmap success\n");
         }
@@ -162,8 +161,8 @@ void DG_Init()
 
     if (KeyboardFd >= 0)
     {
-        //enter non-blocking mode
-        ioctl(KeyboardFd, 1, (void*)1);
+        // enter non-blocking mode
+        ioctl(KeyboardFd, 1, (void *)1);
     }
 
     int argPosX = 0;
@@ -197,7 +196,7 @@ static void handleKeyInput()
 
         scancode = (0x7F & scancode);
 
-        //printf("scancode:%x pressed:%d\n", scancode, 0 == keyRelease);
+        // printf("scancode:%x pressed:%d\n", scancode, 0 == keyRelease);
 
         if (0 == keyRelease)
         {
@@ -230,7 +229,7 @@ void DG_SleepMs(uint32_t ms)
 
 uint32_t DG_GetTicksMs()
 {
-    struct timeval  tp;
+    struct timeval tp;
     struct timezone tzp;
 
     gettimeofday(&tp, &tzp);
@@ -238,11 +237,11 @@ uint32_t DG_GetTicksMs()
     return (tp.tv_sec * 1000) + (tp.tv_usec / 1000); /* return milliseconds */
 }
 
-int DG_GetKey(int* pressed, unsigned char* doomKey)
+int DG_GetKey(int *pressed, unsigned char *doomKey)
 {
     if (s_KeyQueueReadIndex == s_KeyQueueWriteIndex)
     {
-        //key queue is empty
+        // key queue is empty
 
         return 0;
     }
@@ -259,7 +258,7 @@ int DG_GetKey(int* pressed, unsigned char* doomKey)
     }
 }
 
-void DG_SetWindowTitle(const char * title)
+void DG_SetWindowTitle(const char *title)
 {
 }
 
@@ -271,7 +270,6 @@ int main(int argc, char **argv)
     {
         doomgeneric_Tick();
     }
-    
 
     return 0;
 }

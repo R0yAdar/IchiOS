@@ -3,6 +3,6 @@
 
 #include "types.h"
 
-void gdt_init(void* tss, uint16_t tss_size);
+void gdt_init(void *tss, uint16_t tss_size);
 
 #endif

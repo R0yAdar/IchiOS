@@ -6,10 +6,9 @@
 
 #include <Windows.h>
 
-static BITMAPINFO s_Bmi = { sizeof(BITMAPINFOHEADER), DOOMGENERIC_RESX, -DOOMGENERIC_RESY, 1, 32 };
+static BITMAPINFO s_Bmi = {sizeof(BITMAPINFOHEADER), DOOMGENERIC_RESX, -DOOMGENERIC_RESY, 1, 32};
 static HWND s_Hwnd = 0;
 static HDC s_Hdc = 0;
-
 
 #define KEYQUEUE_SIZE 16
 
@@ -167,11 +166,11 @@ uint32_t DG_GetTicksMs()
 	return GetTickCount();
 }
 
-int DG_GetKey(int* pressed, unsigned char* doomKey)
+int DG_GetKey(int *pressed, unsigned char *doomKey)
 {
 	if (s_KeyQueueReadIndex == s_KeyQueueWriteIndex)
 	{
-		//key queue is empty
+		// key queue is empty
 
 		return 0;
 	}
@@ -188,7 +187,7 @@ int DG_GetKey(int* pressed, unsigned char* doomKey)
 	}
 }
 
-void DG_SetWindowTitle(const char * title)
+void DG_SetWindowTitle(const char *title)
 {
 	if (s_Hwnd)
 	{
@@ -198,13 +197,12 @@ void DG_SetWindowTitle(const char * title)
 
 int main(int argc, char **argv)
 {
-    doomgeneric_Create(argc, argv);
+	doomgeneric_Create(argc, argv);
 
-    for (int i = 0; ; i++)
-    {
-        doomgeneric_Tick();
-    }
-    
+	for (int i = 0;; i++)
+	{
+		doomgeneric_Tick();
+	}
 
-    return 0;
+	return 0;
 }

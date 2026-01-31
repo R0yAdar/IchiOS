@@ -17,7 +17,8 @@ typedef struct
     unsigned short scale;
 } sys_put_c;
 
-typedef enum {
+typedef enum
+{
     SYS_FILE_OPEN = 0,
     SYS_FILE_CLOSE,
     SYS_FILE_READ,
@@ -29,15 +30,16 @@ typedef struct
 {
     uint64_t id;
     sys_file_action_id action;
-    void* data;
+    void *data;
     uint64_t data_len;
 } sys_file_action;
 
-typedef struct {
+typedef struct
+{
     uint64_t id;
     uint32_t width;
     uint32_t height;
-    uint32_t* buffer;
+    uint32_t *buffer;
 } sys_draw_window;
 
 typedef struct
@@ -45,6 +47,5 @@ typedef struct
     uint32_t last_key;
     uint32_t was_pressed;
 } sys_get_key;
-
 
 #endif

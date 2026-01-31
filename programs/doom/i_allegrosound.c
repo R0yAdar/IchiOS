@@ -40,11 +40,9 @@
 #include <allegro/sound.h>
 #include <allegro/system.h>
 
-
 #define NUM_CHANNELS 16
 
 #define NUM_MIDI_CHANNELS 16
-
 
 static boolean sound_initialized = false;
 
@@ -55,7 +53,6 @@ static int allegro_voices[NUM_CHANNELS];
 static SAMPLE *dummy_sample = NULL;
 
 static boolean use_sfx_prefix;
-
 
 // We don't support libsamplerate with Allegro but these have to be here since
 // other code requires them
@@ -68,7 +65,6 @@ int use_libsamplerate = 0;
 // is used, clipping might occur.
 
 float libsamplerate_scale = 0.65f;
-
 
 // Load and convert a sound effect
 // Returns true if successful
@@ -90,8 +86,7 @@ static boolean CacheSFX(sfxinfo_t *sfxinfo)
 
 	// Check the header, and ensure this is a valid sound
 
-	if (lumplen < 8
-	 || data[0] != 0x03 || data[1] != 0x00)
+	if (lumplen < 8 || data[0] != 0x03 || data[1] != 0x00)
 	{
 		// Invalid sound
 
@@ -124,7 +119,8 @@ static boolean CacheSFX(sfxinfo_t *sfxinfo)
 	length -= 32;
 
 	sample = create_sample(8, 0, samplerate, length);
-	if (sample == NULL) {
+	if (sample == NULL)
+	{
 		return false;
 	}
 	memcpy(sample->data, data, length);
@@ -137,7 +133,6 @@ static boolean CacheSFX(sfxinfo_t *sfxinfo)
 
 	return true;
 }
-
 
 static void GetSfxLumpName(sfxinfo_t *sfx, char *buf, size_t buf_len)
 {
@@ -161,7 +156,6 @@ static void GetSfxLumpName(sfxinfo_t *sfx, char *buf, size_t buf_len)
 	}
 }
 
-
 static void I_Allegro_PrecacheSounds(sfxinfo_t *sounds, int num_sounds)
 {
 	char namebuf[9];
@@ -169,7 +163,7 @@ static void I_Allegro_PrecacheSounds(sfxinfo_t *sounds, int num_sounds)
 
 	printf("I_Allegro_PrecacheSounds: Precaching all sound effects..");
 
-	for (i=0; i<num_sounds; ++i)
+	for (i = 0; i < num_sounds; ++i)
 	{
 		if ((i % 6) == 0)
 		{
@@ -189,7 +183,6 @@ static void I_Allegro_PrecacheSounds(sfxinfo_t *sounds, int num_sounds)
 
 	printf("\n");
 }
-
 
 //
 // Retrieve the raw data lump index
@@ -214,7 +207,8 @@ static void I_Allegro_UpdateSoundParams(int handle, int vol, int sep)
 		return;
 	}
 
-	if (channels_playing[handle] == NULL) {
+	if (channels_playing[handle] == NULL)
+	{
 		return;
 	}
 
@@ -244,7 +238,8 @@ static int I_Allegro_StartSound(sfxinfo_t *sfxinfo, int channel, int vol, int se
 
 	// Release a sound effect if there is already one playing
 	// on this channel
-	if (channels_playing[channel]) {
+	if (channels_playing[channel])
+	{
 		voice_stop(allegro_voices[channel]);
 		channels_playing[channel] = NULL;
 	}
@@ -270,7 +265,6 @@ static int I_Allegro_StartSound(sfxinfo_t *sfxinfo, int channel, int vol, int se
 	return channel;
 }
 
-
 static void I_Allegro_StopSound(int handle)
 {
 	if (!sound_initialized || handle < 0 || handle >= NUM_CHANNELS)
@@ -278,14 +272,14 @@ static void I_Allegro_StopSound(int handle)
 		return;
 	}
 
-	if (channels_playing[handle] == NULL) {
+	if (channels_playing[handle] == NULL)
+	{
 		return;
 	}
 
 	voice_stop(allegro_voices[handle]);
 	channels_playing[handle] = NULL;
 }
-
 
 static boolean I_Allegro_SoundIsPlaying(int handle)
 {
@@ -296,12 +290,14 @@ static boolean I_Allegro_SoundIsPlaying(int handle)
 		return false;
 	}
 
-	if (channels_playing[handle] == NULL) {
+	if (channels_playing[handle] == NULL)
+	{
 		return false;
 	}
 
 	position = voice_get_position(allegro_voices[handle]);
-	if (position < 0) {
+	if (position < 0)
+	{
 		// finished
 		return false;
 	}
@@ -310,7 +306,7 @@ static boolean I_Allegro_SoundIsPlaying(int handle)
 	return true;
 }
 
-// 
+//
 // Periodically called to update the sound system
 //
 
@@ -319,17 +315,19 @@ static void I_Allegro_UpdateSound(void)
 	int i;
 
 	// loop through all channels which have sample, check if they're finished
-	for (i = 0; i < NUM_CHANNELS; i++) {
-		if (channels_playing[i]) {
+	for (i = 0; i < NUM_CHANNELS; i++)
+	{
+		if (channels_playing[i])
+		{
 			int position = voice_get_position(allegro_voices[i]);
-			if (position < 0) {
+			if (position < 0)
+			{
 				// finished
 				channels_playing[i] = NULL;
 			}
 		}
 	}
 }
-
 
 static void I_Allegro_ShutdownSound(void)
 {
@@ -340,8 +338,10 @@ static void I_Allegro_ShutdownSound(void)
 		return;
 	}
 
-	for (i = 0; i < NUM_CHANNELS; i++) {
-		if (channels_playing[i] != NULL) {
+	for (i = 0; i < NUM_CHANNELS; i++)
+	{
+		if (channels_playing[i] != NULL)
+		{
 			voice_stop(allegro_voices[i]);
 			channels_playing[i] = NULL;
 		}
@@ -357,7 +357,6 @@ static void I_Allegro_ShutdownSound(void)
 	sound_initialized = false;
 }
 
-
 static boolean I_Allegro_InitSound(boolean _use_sfx_prefix)
 {
 	int i;
@@ -366,7 +365,7 @@ static boolean I_Allegro_InitSound(boolean _use_sfx_prefix)
 
 	// No sounds yet
 
-	for (i=0; i<NUM_CHANNELS; ++i)
+	for (i = 0; i < NUM_CHANNELS; ++i)
 	{
 		channels_playing[i] = NULL;
 	}
@@ -374,28 +373,31 @@ static boolean I_Allegro_InitSound(boolean _use_sfx_prefix)
 	reserve_voices(NUM_CHANNELS, NUM_MIDI_CHANNELS);
 
 	i = install_sound(DIGI_AUTODETECT, MIDI_AUTODETECT, "allegro.cfg");
-	if (i < 0) {
+	if (i < 0)
+	{
 		printf("install_sound failed: %d \"%s\"\n", i, allegro_error);
 		return false;
 	}
 
 	printf("Allegro sound initialized\n");
 
-	printf("Mixer quality %d\n",       get_mixer_quality());
-	printf("Mixer freq %d\n",          get_mixer_frequency());
-	printf("Mixer bits %d\n",          get_mixer_bits());
-	printf("Mixer channels %d\n",      get_mixer_channels());
-	printf("Mixer voices %d\n",        get_mixer_voices());
+	printf("Mixer quality %d\n", get_mixer_quality());
+	printf("Mixer freq %d\n", get_mixer_frequency());
+	printf("Mixer bits %d\n", get_mixer_bits());
+	printf("Mixer channels %d\n", get_mixer_channels());
+	printf("Mixer voices %d\n", get_mixer_voices());
 	printf("Mixer buffer length %d\n", get_mixer_buffer_length());
 
 	// create a dummy sample used to create voices
 	dummy_sample = create_sample(8, 0, 11025, 8);
-	if (dummy_sample == NULL) {
+	if (dummy_sample == NULL)
+	{
 		printf("Failed to create sound sample: %s\n", allegro_error);
 		return false;
 	}
 
-	for (i = 0; i < NUM_CHANNELS; i++) {
+	for (i = 0; i < NUM_CHANNELS; i++)
+	{
 		allegro_voices[i] = allocate_voice(dummy_sample);
 	}
 
@@ -404,30 +406,27 @@ static boolean I_Allegro_InitSound(boolean _use_sfx_prefix)
 	return true;
 }
 
-
 static snddevice_t sound_allegro_devices[] =
-{
-	SNDDEVICE_SB,
-	SNDDEVICE_PAS,
-	SNDDEVICE_GUS,
-	SNDDEVICE_WAVEBLASTER,
-	SNDDEVICE_SOUNDCANVAS,
-	SNDDEVICE_AWE32,
+	{
+		SNDDEVICE_SB,
+		SNDDEVICE_PAS,
+		SNDDEVICE_GUS,
+		SNDDEVICE_WAVEBLASTER,
+		SNDDEVICE_SOUNDCANVAS,
+		SNDDEVICE_AWE32,
 };
 
-
-sound_module_t DG_sound_module = 
-{
-	sound_allegro_devices,
-	arrlen(sound_allegro_devices),
-	I_Allegro_InitSound,
-	I_Allegro_ShutdownSound,
-	I_Allegro_GetSfxLumpNum,
-	I_Allegro_UpdateSound,
-	I_Allegro_UpdateSoundParams,
-	I_Allegro_StartSound,
-	I_Allegro_StopSound,
-	I_Allegro_SoundIsPlaying,
-	I_Allegro_PrecacheSounds,
+sound_module_t DG_sound_module =
+	{
+		sound_allegro_devices,
+		arrlen(sound_allegro_devices),
+		I_Allegro_InitSound,
+		I_Allegro_ShutdownSound,
+		I_Allegro_GetSfxLumpNum,
+		I_Allegro_UpdateSound,
+		I_Allegro_UpdateSoundParams,
+		I_Allegro_StartSound,
+		I_Allegro_StopSound,
+		I_Allegro_SoundIsPlaying,
+		I_Allegro_PrecacheSounds,
 };
-
