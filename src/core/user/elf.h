@@ -26,7 +26,7 @@ elf_context *elf_open(file *elf_file, ELF_ERRORS *out_error);
 
 void elf_get_layout(elf_context *ctx, elf_info *out_info);
 
-ELF_ERRORS elf_load_into(elf_context *ctx, void *dest, void** out_entry);
+ELF_ERRORS elf_load_into(elf_context *ctx, void *dest, void **out_entry);
 
 void elf_release(elf_context *ctx);
 

@@ -28,8 +28,11 @@ OBJS := $(patsubst $(SRC_DIR)/%.c, $(BUILD_DIR)/%.c.o, $(C_SRCS)) \
 BOOT_IMAGE := $(BUILD_DIR)/boot_image
 
 # Define the programs build path relative to the main Makefile
-PROG_SRC_DIR   := programs/example
-PROG_BUILD_DIR := $(BUILD_DIR)/programs/example
+EXMPL_PROG_SRC_DIR   := programs/example
+EXMPL_PROG_BUILD_DIR := $(BUILD_DIR)/programs/example
+
+DOOM_PROG_SRC_DIR   := programs/doom
+DOOM_PROG_BUILD_DIR := $(BUILD_DIR)/programs/doom
 
 # Define the xlibc build path relative to the main Makefile
 XLIBC_SRC_DIR   := xlibc
@@ -52,8 +55,12 @@ $(BUILD_DIR)/linked.elf: $(OBJS)
 $(BOOT_IMAGE): $(BUILD_DIR)/linked.elf
 	@mkdir -p $(dir $@)
 	
-	@mkdir -p $(PROG_BUILD_DIR)
-	$(MAKE) -C $(PROG_SRC_DIR) BUILD_DIR=$(abspath $(PROG_BUILD_DIR))
+	@mkdir -p $(EXMPL_PROG_BUILD_DIR)
+	$(MAKE) -C $(EXMPL_PROG_SRC_DIR) BUILD_DIR=$(abspath $(EXMPL_PROG_BUILD_DIR))
+
+
+	@mkdir -p $(DOOM_PROG_BUILD_DIR)
+	$(MAKE) -f Makefile.Ichi -C $(DOOM_PROG_SRC_DIR) BUILD_DIR=$(abspath $(DOOM_PROG_BUILD_DIR))
 
 	objcopy -O binary --only-section=.boot_sector --only-section=.boot_sign build/linked.elf build/boot_sector.bin
 	objcopy -O binary --only-section=.stage2 build/linked.elf build/stage2.bin
@@ -66,6 +73,7 @@ $(BOOT_IMAGE): $(BUILD_DIR)/linked.elf
 	mkdir -p build/rootfs/files
 	echo "<START OF FILE> \n hello world \n <END OF FILE>" > build/rootfs/files/readme.txt
 	mv build/programs/example/example.elf build/rootfs/files/example.elf
+	mv build/programs/doom/doom.elf build/rootfs/files/doom.elf
 
 	genext2fs -b 10240 -d build/rootfs build/fs.ext2
 

@@ -3,6 +3,6 @@
 
 #include "framebuffer.h"
 
-void syscall_init(framebuffer* fb);
+void syscall_init(framebuffer *fb);
 
 #endif

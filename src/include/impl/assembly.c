@@ -148,6 +148,6 @@ __attribute__((naked, noreturn)) void iretq()
     asm volatile(
         "iretq"
         :
-        :   
+        :
         : "memory");
 }

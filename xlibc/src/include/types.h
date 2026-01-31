@@ -14,8 +14,6 @@ typedef uint8_t BOOL;
 #define PAGE_SIZE 4096
 #define SECTOR_SIZE 512
 
-#define NULL (void*)0
+#define NULL (void *)0
 
 #endif
-
-

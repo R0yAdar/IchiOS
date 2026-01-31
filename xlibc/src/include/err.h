@@ -3,7 +3,8 @@
 
 #include "stdint.h"
 
-typedef enum {
+typedef enum
+{
     FAILED = 0,
     SUCCESS = 1,
 } ERROR_CODE;

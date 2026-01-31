@@ -52,7 +52,7 @@ typedef uint64_t gdt_desc;
 #define GDT_CODE_PL3_OFFSET (3 * sizeof(gdt_desc))
 #define GDT_DATA_PL3_OFFSET (4 * sizeof(gdt_desc))
 #define GDT_TSS_OFFSET (5 * sizeof(gdt_desc))
-                         
+
 #pragma pack(push, 1)
 
 typedef struct

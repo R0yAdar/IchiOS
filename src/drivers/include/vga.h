@@ -10,11 +10,11 @@ typedef struct
 {
   int x;
   int y;
-  const char* text;
+  const char *text;
   char color;
 } vga_text_input;
 
-void vga_put(vga_text_input* input);
+void vga_put(vga_text_input *input);
 
 void vga_clear_screen();
 
