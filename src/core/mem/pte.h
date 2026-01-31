@@ -25,36 +25,44 @@ typedef uint64_t pte_t;
 #define DEFAULT_HUGE_PTE (pte_t)(x64_PTE_FLAG_PRESENT + x64_PTE_FLAG_WRITEABLE + x64_PTE_FLAG_HUGE_PAGE)
 #define PDPT_HUGE_PAGE_SIZE 1024 * 1024 * 1024
 
-void pte_assign_address(pte_t* pte, void* address) {
+void pte_assign_address(pte_t *pte, void *address)
+{
     *pte &= (~x64_PTE_MASK_PHYSICAL_ADDRESS);
     *pte |= ((uint64_t)address & x64_PTE_MASK_PHYSICAL_ADDRESS);
 }
 
-void* pte_get_address(pte_t* pte) {
-    return (void*)(*pte & x64_PTE_MASK_PHYSICAL_ADDRESS);
+void *pte_get_address(pte_t *pte)
+{
+    return (void *)(*pte & x64_PTE_MASK_PHYSICAL_ADDRESS);
 }
 
-void pte_mark_present(pte_t* pte) {
+void pte_mark_present(pte_t *pte)
+{
     *pte |= x64_PTE_FLAG_PRESENT;
 }
 
-void pte_mark_non_cacheable(pte_t* pte) {
+void pte_mark_non_cacheable(pte_t *pte)
+{
     *pte |= x64_PTE_FLAG_DISABLE_CACHE;
 }
 
-void pte_mark_writeable(pte_t* pte) {
+void pte_mark_writeable(pte_t *pte)
+{
     *pte |= x64_PTE_FLAG_WRITEABLE;
 }
 
-void pte_mark_user_space(pte_t* pte) {
+void pte_mark_user_space(pte_t *pte)
+{
     *pte |= x64_PTE_FLAG_USER_ACCESSIBLE;
 }
 
-void pte_mark_huge_page(pte_t* pte) {
+void pte_mark_huge_page(pte_t *pte)
+{
     *pte |= x64_PTE_FLAG_HUGE_PAGE;
 }
 
-BOOL pte_is_huge_page(pte_t* pte) {
+BOOL pte_is_huge_page(pte_t *pte)
+{
     return (BOOL)((*pte & x64_PTE_FLAG_HUGE_PAGE) != 0);
 }
 

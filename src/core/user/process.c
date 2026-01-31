@@ -5,12 +5,15 @@
 #include "assembly.h"
 #include "scheduler.h"
 
-#define STACK_ADDRESS 0x70000000
-#define STACK_SIZE (4096 * 2)
+#define STACK_ADDRESS 0x150000000
+#define STACK_SIZE (4096 * 1024)
+#define HEAP_ADDRESS 0x100000000
+#define HEAP_SIZE (0xF00000)
 
 uint64_t _pid = 0;
 
-uint64_t get_pid() {
+uint64_t get_pid()
+{
     return _pid++;
 }
 
@@ -75,6 +78,12 @@ void process_exec(process_ctx *ctx, file *elf)
         return;
     }
 
+    if (!vmm_allocate_umm(ctx->vmem_ctx, HEAP_ADDRESS, HEAP_SIZE))
+    {
+        qemu_log("Failed to allocate heap");
+        return;
+    }
+
     ctx->exec_ctx.rsp = STACK_ADDRESS + STACK_SIZE;
     ctx->exec_ctx.rip = (uint64_t)entry;
     ctx->state = PROCESS_READY;
@@ -90,12 +99,13 @@ void process_init_idle(process_ctx *ctx)
 
     ctx->exec_ctx.rsp = 0x0;
     ctx->exec_ctx.rip = 0x1000;
-    ctx->state = PROCESS_READY;
+    ctx->state = PROCESS_IDLE;
 }
 
 void process_stop(process_ctx *ctx, volatile stack_layout *stack)
 {
-    if (ctx->state != PROCESS_BLOCKED) {
+    if (ctx->state != PROCESS_BLOCKED && ctx->state != PROCESS_IDLE)
+    {
         ctx->state = PROCESS_READY;
     }
 
@@ -104,7 +114,11 @@ void process_stop(process_ctx *ctx, volatile stack_layout *stack)
 
 __attribute__((naked, noreturn)) void process_resume(process_ctx *ctx)
 {
-    ctx->state = PROCESS_ACTIVE;
+    if (ctx->state != PROCESS_IDLE)
+    {
+        ctx->state = PROCESS_READY;
+    }
+
     vmm_apply_pagetable(ctx->vmem_ctx);
 
     asm volatile(
@@ -148,19 +162,23 @@ __attribute__((naked, noreturn)) void process_resume(process_ctx *ctx)
         : "ax", "memory");
 }
 
-void process_block(process_ctx *ctx) {
+void process_block(process_ctx *ctx)
+{
     ctx->state = PROCESS_BLOCKED;
 }
 
-void process_unblock(process_ctx *ctx) {
+void process_unblock(process_ctx *ctx)
+{
     ctx->state = PROCESS_READY;
 }
 
-process_state process_get_state(process_ctx *ctx) {
+process_state process_get_state(process_ctx *ctx)
+{
     return ctx->state;
 }
 
-uint64_t process_get_pid(process_ctx *ctx) {
+uint64_t process_get_pid(process_ctx *ctx)
+{
     return ctx->pid;
 }
 

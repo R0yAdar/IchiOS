@@ -2,12 +2,16 @@
 #include "font.h"
 #include "vmm.h"
 
-framebuffer* framebuffer_init(uint8_t* fb, uint32_t width, uint32_t height, uint32_t pitch, uint8_t bpp, uint32_t model) {
-    if (!fb) return NULL;
-    if (bpp != 15 && model != 6) return NULL;
+framebuffer *framebuffer_init(uint8_t *fb, uint32_t width, uint32_t height, uint32_t pitch, uint8_t bpp, uint32_t model)
+{
+    if (!fb)
+        return NULL;
+    if (bpp != 15 && model != 6)
+        return NULL;
 
-    framebuffer* fb_out = (framebuffer*)kmalloc(sizeof(framebuffer));
-    if (!fb_out) return NULL;
+    framebuffer *fb_out = (framebuffer *)kmalloc(sizeof(framebuffer));
+    if (!fb_out)
+        return NULL;
 
     fb_out->fb = fb;
     fb_out->width = width;
@@ -17,20 +21,53 @@ framebuffer* framebuffer_init(uint8_t* fb, uint32_t width, uint32_t height, uint
     return fb_out;
 }
 
-void framebuffer_put_pixel(framebuffer* fb, uint32_t x, uint32_t y, uint16_t color) {
-    if (x >= fb->width || y >= fb->height) return;
+#include "serial.h"
+
+void framebuffer_draw_window(framebuffer *fb, uint32_t width, uint32_t height, uint32_t *buffer)
+{
+    uint32_t draw_w = (width < fb->width) ? width : fb->width;
+    uint32_t draw_h = (height < fb->height) ? height : fb->height;
+
+    for (uint32_t y = 0; y < draw_h; y++)
+    {
+        uint16_t *dst_row = (uint16_t *)((uint8_t *)fb->fb + (y * fb->pitch));
+
+        uint32_t *src_row = buffer + (y * width);
+
+        for (uint32_t x = 0; x < draw_w; x++)
+        {
+            uint32_t color = src_row[x];
+
+            uint16_t color15 = ((color >> 19) & 0x1F) << 10 |
+                               ((color >> 11) & 0x1F) << 5 |
+                               ((color >> 3) & 0x1F);
+
+            dst_row[x] = color15 & 0xFFFE;
+        }
+    }
+}
+
+void framebuffer_put_pixel(framebuffer *fb, uint32_t x, uint32_t y, uint16_t color)
+{
+    if (x >= fb->width || y >= fb->height)
+        return;
 
     uint32_t offset = fb->pitch * y + x * ((fb->bpp + 7) / 8);
 
-    *(uint16_t*)((uint8_t*)fb->fb + offset) = color & 0xFFFE;
+    *(uint16_t *)((uint8_t *)fb->fb + offset) = color & 0xFFFE;
 }
 
-void framebuffer_draw_char8x8(framebuffer* fb, uint32_t x, uint32_t y, char c, uint16_t color, uint8_t scale) {
-    if (x + FONT8X8_BASIC_WIDTH >= fb->width || y + FONT8X8_BASIC_HEIGHT >= fb->height) return;
+void framebuffer_draw_char8x8(framebuffer *fb, uint32_t x, uint32_t y, char c, uint16_t color, uint8_t scale)
+{
+    if (x + FONT8X8_BASIC_WIDTH >= fb->width || y + FONT8X8_BASIC_HEIGHT >= fb->height)
+        return;
 
-    for (size_t row = 0; row < FONT8X8_BASIC_HEIGHT; row++) {
-        for (size_t col = 0; col < FONT8X8_BASIC_WIDTH; col++) {
-            if (font8x8_basic[(uint8_t)c][row] & (1 << col)) {
+    for (size_t row = 0; row < FONT8X8_BASIC_HEIGHT; row++)
+    {
+        for (size_t col = 0; col < FONT8X8_BASIC_WIDTH; col++)
+        {
+            if (font8x8_basic[(uint8_t)c][row] & (1 << col))
+            {
                 for (size_t xscale = 0; xscale < scale; xscale++)
                 {
                     for (size_t yscale = 0; yscale < scale; yscale++)
@@ -43,8 +80,10 @@ void framebuffer_draw_char8x8(framebuffer* fb, uint32_t x, uint32_t y, char c, u
     }
 }
 
-void framebuffer_clear(framebuffer* fb) {
-    for (size_t i = 0; i < fb->pitch * fb->height; i++) {
-        ((uint8_t*)fb->fb)[i] = 0;
+void framebuffer_clear(framebuffer *fb)
+{
+    for (size_t i = 0; i < fb->pitch * fb->height; i++)
+    {
+        ((uint8_t *)fb->fb)[i] = 0;
     }
 }

@@ -3,7 +3,7 @@
 
 #include "stdint.h"
 
-#pragma pack (push, 1)
+#pragma pack(push, 1)
 
 typedef struct idtr_t
 {
@@ -11,7 +11,7 @@ typedef struct idtr_t
     uint64_t base;
 } idtr;
 
-#pragma pack (pop)
+#pragma pack(pop)
 
 uint64_t read_cr3();
 
@@ -23,9 +23,9 @@ void sti();
 
 void hlt();
 
-void switch_stack(void* new_stack, void (*func)(void));
+void switch_stack(void *new_stack, void (*func)(void));
 
-void gdtr_load(void* gdtr);
+void gdtr_load(void *gdtr);
 
 void ltr();
 
@@ -39,7 +39,7 @@ uint32_t port_inl(uint16_t port);
 
 void idtr_load(idtr idtr);
 
-void interrupt80(uint64_t arg1, void* arg2);
+void interrupt80(uint64_t arg1, void *arg2);
 
 void flush_tlb(uint64_t address);
 
