@@ -196,8 +196,9 @@ void clean_start()
 	}
 	
 	file *exe = fopen("/files/doom.elf", READ);
+	file *exe2 = fopen("/files/example.elf", READ);
 
-	if (!exe) {
+	if (!exe || !exe2) {
 		qemu_log("Failed to open exe file");
 	}
 	else {
@@ -209,6 +210,10 @@ void clean_start()
 		process_ctx* p = process_create();
 		process_exec(p, exe);
 		scheduler_add_process(p);
+
+		process_ctx* p2 = process_create();
+		process_exec(p2, exe2);
+		scheduler_add_process(p2);
 	}
 
 	qemu_log("Transferring control to scheduler");

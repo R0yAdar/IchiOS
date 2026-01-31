@@ -129,19 +129,25 @@ key_event *key_events = NULL;
 uint32_t key_events_write_index = 0;
 uint32_t key_events_read_index = 0;
 
-BOOL kybrd_is_recorded(uint8_t scancode, BOOL pressed) {
-    for (uint32_t i = key_events_read_index; i < key_events_write_index; i++) {
-        if (key_events[i].key == scancode && key_events[i].pressed == pressed) {
-            return TRUE;
+BOOL kybrd_is_recorded(uint32_t key, BOOL pressed)
+{
+    BOOL already_in_queue = FALSE;
+    uint32_t i = key_events_read_index;
+    while (i != key_events_write_index)
+    {
+        if (key_events[i].key == key && key_events[i].pressed == pressed)
+        {
+            already_in_queue = TRUE;
+            break;
         }
+        i = (i + 1) % KEY_EVENTS_QUEUE_SIZE;
     }
-    
-    return FALSE;
+
+    return already_in_queue;
 }
 
 void kybrd_press_callback(uint8_t scancode, BOOL pressed)
 {
-    cli();
     uint32_t key = kybrd_key_to_ascii(scancode);
 
     if (!kybrd_is_recorded(key, pressed))
