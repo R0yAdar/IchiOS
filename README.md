@@ -8,9 +8,13 @@ My **first** (and probably last) attempt at writing an OS (x86_64)
 * VMM, PMM, Basic Memory Protection via Paging
 * Processes + ELF loader
 * Scheduler + Multiprocessing (+sleep support, idle, blocked, etc.)
-* Basic Userspace + Small Syscalls Interface (demonstrates the concept, some are unsafe from a security perspective - easily fixable, but it's intended as a PoC)
-* Two Programs (seen running simultaneously in the DEMO):
-  * A simple example program
+* Basic Userspace + Small Syscalls Interface
+* Two Userland Programs (seen running simultaneously in the DEMO):
+  * A simple example program (prints the color changing title)
   * A basic port of doomgeneric (that I've written a very minimal libc for)
 
+
+
 ![ichi-demo](https://github.com/user-attachments/assets/07a7b922-f5ca-444f-a585-bf3b5fbc3e50)
+
+*(the gif was downgraded to save space)*
