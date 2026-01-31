@@ -14,6 +14,7 @@ void DG_Init()
 
 void DG_DrawFrame()
 {
+    printf("DG_DrawFrame\n");
     int doom_w = 640;
     int doom_h = 400;
 
@@ -22,11 +23,13 @@ void DG_DrawFrame()
 
 void DG_SleepMs(uint32_t ms)
 {
+    printf("DG_SleepMs\n");
     syscall_sleep(ms);
 }
 
 uint32_t DG_GetTicksMs()
 {
+    printf("DG_GetTicksMs\n");
     return (uint32_t)syscall_get_uptime();
 }
 
@@ -55,7 +58,7 @@ unsigned char convert_to_doom_key(uint32_t my_os_key)
     case ' ':
         return KEY_USE;
     case 'r':
-        return KEY_RCTRL;
+        return KEY_FIRE;
     case 13:
         return KEY_ENTER;
     case 27:
@@ -69,6 +72,7 @@ uint32_t last_pressed_state = 0;
 
 int DG_GetKey(int *pressed, unsigned char *key)
 {
+    printf("DG_GetKey\n");
     syscall_get_key(key, pressed);
 
     if (*pressed == last_pressed_state)

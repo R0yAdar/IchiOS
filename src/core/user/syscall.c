@@ -159,4 +159,5 @@ void syscall_init(framebuffer *fb)
     _syscalls[SYSCALL_FILE_OPS_CODE] = (syscall_handler_t)sh_file_ops;
     _syscalls[7] = (syscall_handler_t)sh_draw_window;
     _syscalls[8] = (syscall_handler_t)sh_get_key;
+    
 }
