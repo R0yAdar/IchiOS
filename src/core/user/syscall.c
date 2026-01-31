@@ -6,6 +6,7 @@
 #include "serial.h"
 #include "../../../sys_common/sys_structs.h"
 #include "scheduler.h"
+#include "keyboard.h"
 
 typedef void (*syscall_handler_t)(void *ptr);
 
@@ -119,9 +120,36 @@ void sh_file_ops(void *ptr)
     }
 }
 
+void sh_draw_window(void *ptr)
+{
+    sys_draw_window *data = (sys_draw_window*)ptr;
+
+    framebuffer_draw_window(_fb, data->width, data->height, data->buffer);
+}
+
+uint32_t _key_last;
+uint32_t _key_was_pressed;
+
+
+
+void kybrd_press_callback(uint8_t scancode, BOOL pressed)
+{
+    _key_last = kybrd_key_to_ascii(scancode);
+	_key_was_pressed = pressed;
+}
+
+void sh_get_key(void *ptr)
+{
+    sys_get_key *data = (sys_get_key*)ptr;
+
+    data->last_key = _key_last;
+    data->was_pressed = _key_was_pressed;
+}
+
 void syscall_init(framebuffer *fb)
 {
     _fb = fb;
+    kybrd_set_event_callback(kybrd_press_callback);
     _syscalls[0] = (syscall_handler_t)sh_hello;
     _syscalls[1] = (syscall_handler_t)sh_sleep;
     _syscalls[2] = (syscall_handler_t)sh_echo;
@@ -129,7 +157,6 @@ void syscall_init(framebuffer *fb)
     _syscalls[4] = (syscall_handler_t)sh_puts;
     _syscalls[5] = (syscall_handler_t)sh_get_uptime;
     _syscalls[SYSCALL_FILE_OPS_CODE] = (syscall_handler_t)sh_file_ops;
-
-    
-    
+    _syscalls[7] = (syscall_handler_t)sh_draw_window;
+    _syscalls[8] = (syscall_handler_t)sh_get_key;
 }

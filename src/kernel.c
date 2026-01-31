@@ -24,7 +24,7 @@
 #include "cstring.h"
 
 #define ARRAY_SIZE(arr) ((int)sizeof(arr) / (int)sizeof((arr)[0]))
-#define KERNEL_STACK_SIZE 4
+#define KERNEL_STACK_SIZE 10
 #define PAGE_SIZE 4096
 #define KERNEL_PHYS_OFFSET 0x8200
 
@@ -64,9 +64,9 @@ void __early_init_pmm(multiboot_info *info)
 
 void __early_init_framebuffer(multiboot_info *info)
 {
-	qemu_logf("Saving framebuffer (Screen=%dx%d, bpp=%d, MemoryModel=%d)", vbe_mode_info.width, vbe_mode_info.height, vbe_mode_info.bpp, vbe_mode_info.memory_model);
 	vbe_mode_info_structure *mode_info = (vbe_mode_info_structure *)(uint64_t)info->m_vbe_mode_info;
 	vbe_mode_info = *mode_info;
+	qemu_logf("Saved framebuffer (Screen=%dx%d, bpp=%d, MemoryModel=%d)", vbe_mode_info.width, vbe_mode_info.height, vbe_mode_info.bpp, vbe_mode_info.memory_model);
 }
 
 void __switch_kernel_stack()
@@ -78,27 +78,6 @@ void __switch_kernel_stack()
 	
 	qemu_logf("New stack top: %x", stack_top);
 	switch_stack(stack_top, clean_start);
-}
-
-void key_callback(uint8_t scancode, BOOL pressed)
-{
-	char buffer[] = {0, 0};
-	if (pressed)
-	{
-		uint32_t key = kybrd_key_to_ascii(scancode);
-
-		if (key < 128)
-		{
-			if (key == '0')
-			{
-				key = '1';
-			}
-
-			buffer[0] = key;
-
-			qemu_log(buffer);
-		}
-	}
 }
 
 void mount_root_fs()
@@ -142,8 +121,6 @@ void _start_kernel(multiboot_info *info)
 	qemu_log("Ichi kernel enabled PIC...");
 
 	kybrd_init();
-
-	kybrd_set_event_callback(key_callback);
 
 	qemu_log("Ichi kernel enabled KEYBOARD...");
 
@@ -218,7 +195,7 @@ void clean_start()
 		framebuffer_clear(fb);
 	}
 
-	file *exe = fopen("/files/example.elf", READ);
+	file *exe = fopen("/files/doom.elf", READ);
 
 	if (!exe) {
 		qemu_log("Failed to open exe file");

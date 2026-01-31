@@ -2,8 +2,11 @@
 #define SYS_STRUCTS_H
 
 #ifndef STDINT_H
+typedef unsigned int uint32_t;
 typedef unsigned long long uint64_t;
 #endif
+
+#define SYSCALL_FILE_OPS_CODE 0x6
 
 typedef struct
 {
@@ -13,8 +16,6 @@ typedef struct
     char c;
     unsigned short scale;
 } sys_put_c;
-
-#define SYSCALL_FILE_OPS_CODE 0x6
 
 typedef enum {
     SYS_FILE_OPEN = 0,
@@ -31,5 +32,19 @@ typedef struct
     void* data;
     uint64_t data_len;
 } sys_file_action;
+
+typedef struct {
+    uint64_t id;
+    uint32_t width;
+    uint32_t height;
+    uint32_t* buffer;
+} sys_draw_window;
+
+typedef struct
+{
+    uint32_t last_key;
+    uint32_t was_pressed;
+} sys_get_key;
+
 
 #endif

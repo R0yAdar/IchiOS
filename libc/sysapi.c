@@ -74,3 +74,26 @@ uint64_t syscall_file_tell(uint64_t fid) {
 
 void syscall_file_close(uint64_t fid) {
 }
+
+void syscall_draw_window(uint32_t width, uint32_t height, uint32_t* buffer) {
+    sys_draw_window data = {
+        .id = 0,
+        .width = width,
+        .height = height,
+        .buffer = buffer,
+    };
+
+    syscall(7, &data);
+}
+
+void syscall_get_key(uint32_t* last_key, uint32_t* was_pressed) {
+    sys_get_key data = {
+        .last_key = 0,
+        .was_pressed = 0,
+    };
+
+    syscall(8, &data);
+
+    *last_key = data.last_key;
+    *was_pressed = data.was_pressed;
+}

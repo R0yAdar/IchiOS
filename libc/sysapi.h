@@ -25,4 +25,8 @@ uint64_t syscall_file_tell(uint64_t fid);
 
 void syscall_file_close(uint64_t fid);
 
+void syscall_draw_window(uint32_t width, uint32_t height, uint32_t* buffer);
+
+void syscall_get_key(uint32_t* last_key, uint32_t* was_pressed);
+
 #endif

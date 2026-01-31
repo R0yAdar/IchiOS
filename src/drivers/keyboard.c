@@ -208,7 +208,6 @@ void kybrd_irq_handler()
 		context.extended = FALSE;
 	}
 
-	// Test if break code
 	if (code & 0x80)
 	{
 		code -= 0x80;
@@ -233,10 +232,13 @@ void kybrd_irq_handler()
 			break;
 
 		default:
-			break; // ???
+			break;
 		}
 
-		context.callback(context.scancode, FALSE);
+		if (context.callback)
+		{
+			context.callback(context.scancode, FALSE);
+		}
 	}
 	else
 	{
@@ -280,17 +282,11 @@ void kybrd_irq_handler()
 			break;
 		}
 
-		context.callback(context.scancode, TRUE);
+		if (context.callback)
+		{
+			context.callback(context.scancode, TRUE);
+		}
 	}
-
-	/*
-	switch (code)
-	{
-		case KYBRD_ERR_BAT_FAILED:
-		case KYBRD_ERR_DIAG_FAILED:
-		case KYBRD_ERR_RESEND_CMD:
-	}
-	*/
 }
 
 uint8_t get_last_scancode()
