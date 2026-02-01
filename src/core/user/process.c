@@ -39,7 +39,7 @@ process_ctx *process_create()
     ctx->vmem_ctx = vmm_create_userspace_context();
     ctx->pid = get_pid();
     ctx->state = PROCESS_CREATED;
-    
+
     ctx->exec_ctx.cs = CS_PL3;
     ctx->exec_ctx.ss = SS_PL3;
     ctx->exec_ctx.rflags = RFLAGS_INIT;

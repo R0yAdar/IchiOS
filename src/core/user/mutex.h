@@ -3,7 +3,8 @@
 
 #include "stdint.h"
 
-typedef struct {
+typedef struct
+{
     volatile uint32_t locked;
 } spinlock_t;
 

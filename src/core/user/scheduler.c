@@ -46,10 +46,10 @@ uint64_t scheduler_check(uint64_t rsp)
         {
             process_stop(_active, stack);
         }
-        
+
         return SCHEDULER_SHOULD_SWITCH_VERDICT;
     }
-    
+
     spin_unlock(&_lock);
     return SCHEDULER_NO_SWITCH_VERDICT;
 }
