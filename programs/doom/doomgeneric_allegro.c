@@ -97,8 +97,8 @@ void DG_DrawFrame()
 
 #ifdef CMAP256
 		set_color_depth(8);
-#else  // CMAP256
-	   // does not seem to work on real DOS hardware
+#else // CMAP256
+	  // does not seem to work on real DOS hardware
 		set_color_depth(32);
 #endif // CMAP256
 

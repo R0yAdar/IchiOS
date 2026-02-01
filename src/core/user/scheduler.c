@@ -4,8 +4,9 @@
 #include "scheduler.h"
 #include "../intrp/pit.h"
 #include "vmm.h"
+#include "mutex.h"
 
-#define SCHEDULER_TIME_PER_PROCESS_MS 10
+#define SCHEDULER_TIME_PER_PROCESS_MS 50
 #define SCHEDULER_PROCESS_COUNT 512
 
 /// Scheduler verdicts, in idt.asm there are interceptors that use these to determine if the scheduler should switch.
@@ -16,6 +17,8 @@ process_ctx *_active = NULL;
 process_ctx **_processes;
 uint16_t _current_process = 0;
 uint64_t _current_deadline = 0;
+
+spinlock_t _lock = SPINLOCK_INIT;
 
 BOOL should_switch = FALSE;
 
@@ -29,8 +32,7 @@ BOOL scheduler_init()
 
 uint64_t scheduler_check(uint64_t rsp)
 {
-    cli();
-
+    spin_lock(&_lock);
     volatile stack_layout *stack = (stack_layout *)rsp;
 
     if (_current_deadline < pit_get_current_time_ms() || (_active && process_get_state(_active) != PROCESS_READY))
@@ -48,6 +50,7 @@ uint64_t scheduler_check(uint64_t rsp)
         return SCHEDULER_SHOULD_SWITCH_VERDICT;
     }
 
+    spin_unlock(&_lock);
     return SCHEDULER_NO_SWITCH_VERDICT;
 }
 
@@ -71,6 +74,7 @@ __attribute__((naked, noreturn)) void scheduler_switch()
 
     _active = _processes[_current_process];
 
+    spin_unlock(&_lock);
     process_resume(_active);
 }
 
