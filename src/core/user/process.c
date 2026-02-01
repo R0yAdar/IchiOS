@@ -9,6 +9,9 @@
 #define STACK_SIZE (4096 * 1024)
 #define HEAP_ADDRESS 0x100000000
 #define HEAP_SIZE (0xF00000)
+#define CS_PL3 0x1B
+#define SS_PL3 0x23
+#define RFLAGS_INIT 0x202
 
 uint64_t _pid = 0;
 
@@ -36,6 +39,10 @@ process_ctx *process_create()
     ctx->vmem_ctx = vmm_create_userspace_context();
     ctx->pid = get_pid();
     ctx->state = PROCESS_CREATED;
+    
+    ctx->exec_ctx.cs = CS_PL3;
+    ctx->exec_ctx.ss = SS_PL3;
+    ctx->exec_ctx.rflags = RFLAGS_INIT;
 
     qemu_logf("Process created with pid %d", ctx->pid);
 
@@ -97,8 +104,11 @@ void process_init_idle(process_ctx *ctx)
     (*(uint8_t *)0x1000) = 0xEB;
     (*(uint8_t *)0x1001) = 0xFE;
 
-    ctx->exec_ctx.rsp = 0x0;
     ctx->exec_ctx.rip = 0x1000;
+
+    vmm_allocate_umm(ctx->vmem_ctx, 0x10000, 4096);
+    ctx->exec_ctx.rsp = 0x10000;
+
     ctx->state = PROCESS_IDLE;
 }
 
@@ -112,7 +122,9 @@ void process_stop(process_ctx *ctx, volatile stack_layout *stack)
     ctx->exec_ctx = *stack;
 }
 
-__attribute__((naked, noreturn)) void process_resume(process_ctx *ctx)
+extern void processUserlandTrampoline(stack_layout *ctx) __attribute__((noreturn));
+
+__attribute__((noreturn)) void process_resume(process_ctx *ctx)
 {
     if (ctx->state != PROCESS_IDLE)
     {
@@ -121,45 +133,7 @@ __attribute__((naked, noreturn)) void process_resume(process_ctx *ctx)
 
     vmm_apply_pagetable(ctx->vmem_ctx);
 
-    asm volatile(
-        "mov %0, %%r11\n\t"
-        "mov %1, %%r10\n\t"
-        "mov %2, %%r9\n\t"
-        "mov %3, %%r8\n\t"
-        "mov %4, %%rdi\n\t"
-        "mov %5, %%rsi\n\t"
-        "mov %6, %%rdx\n\t"
-        "mov %7, %%rcx\n\t"
-        "mov %8, %%rax\n\t"
-        "mov %9, %%rbp\n\t"
-        "mov %10, %%rbx\n\t"
-        "mov %11, %%r12\n\t"
-        "mov %12, %%r13\n\t"
-        "mov %13, %%r14\n\t"
-        "mov %14, %%r15\n\t"
-        :
-        : "g"(ctx->exec_ctx.r11), "g"(ctx->exec_ctx.r10), "g"(ctx->exec_ctx.r9),
-          "g"(ctx->exec_ctx.r8), "g"(ctx->exec_ctx.rdi), "g"(ctx->exec_ctx.rsi),
-          "g"(ctx->exec_ctx.rdx), "g"(ctx->exec_ctx.rcx), "g"(ctx->exec_ctx.rax),
-          "g"(ctx->exec_ctx.rbp), "g"(ctx->exec_ctx.rbx), "g"(ctx->exec_ctx.r12),
-          "g"(ctx->exec_ctx.r13), "g"(ctx->exec_ctx.r14), "g"(ctx->exec_ctx.r15)
-        : "r11", "r10", "r9", "r8", "rdi", "rsi", "rdx", "rcx", "rax", "rbp", "rbx", "r12", "r13", "r14", "r15");
-
-    asm volatile(
-        "mov $0x23, %%ax \n\t"
-        "mov %%ax, %%ds  \n\t"
-        "mov %%ax, %%es  \n\t"
-        "mov %%ax, %%fs  \n\t"
-        "mov %%ax, %%gs  \n\t"
-        "push $0x23 \n\t"
-        "push %0    \n\t"
-        "push $0x202 \n\t"
-        "push $0x1B  \n\t"
-        "push %1     \n\t"
-        "iretq"
-        :
-        : "r"(ctx->exec_ctx.rsp), "r"(ctx->exec_ctx.rip)
-        : "ax", "memory");
+    processUserlandTrampoline(&ctx->exec_ctx);
 }
 
 void process_block(process_ctx *ctx)

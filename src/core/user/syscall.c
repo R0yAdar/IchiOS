@@ -10,10 +10,12 @@
 #include "scheduler.h"
 #include "keyboard.h"
 
+#define SYSCALL_MAX 100
+
 typedef void (*syscall_handler_t)(void *ptr);
 
 framebuffer *_fb;
-syscall_handler_t _syscalls[1000] = {0};
+syscall_handler_t _syscalls[SYSCALL_MAX] = {0};
 
 inline void syscall(uint64_t id, void *ptr)
 {
@@ -22,7 +24,7 @@ inline void syscall(uint64_t id, void *ptr)
 
 void syscall_handler(uint64_t syscall_no, void *ptr)
 {
-    if (syscall_no < 1000 && _syscalls[syscall_no] && (!IS_HIGHER_HALF(ptr)))
+    if (syscall_no < SYSCALL_MAX && _syscalls[syscall_no] && (!IS_HIGHER_HALF(ptr)))
     {
         _syscalls[syscall_no](ptr);
     }

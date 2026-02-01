@@ -4,6 +4,9 @@
 #define HEAP_START_ADDRESS 0x100000000
 #define HEAP_SIZE (0xF00000)
 
+#define ALIGNMENT 16
+#define ALIGN(size) (((size) + (ALIGNMENT - 1)) & ~(ALIGNMENT - 1))
+
 uint64_t _heap_start = HEAP_START_ADDRESS;
 uint64_t _heap_end = HEAP_START_ADDRESS + HEAP_SIZE;
 uint64_t _heap_current = HEAP_START_ADDRESS;
@@ -23,6 +26,9 @@ heap_header *free_list; /// OBSOLETE (currently unused)
 void *malloc(size_t size)
 {
     size += sizeof(heap_header);
+
+    size = ALIGN(size);
+
     if (_heap_current + size > _heap_end)
     {
         printf("Heap overflow");
