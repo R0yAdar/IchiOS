@@ -8,23 +8,23 @@ void syscall(uint64_t id, void *ptr)
 
 void syscall_sleep(uint64_t ms)
 {
-    syscall(1, ms);
+    syscall(SYSCALL_SLEEP, (void *)ms);
 }
 
 void syscall_echo(char *msg)
 {
-    syscall(2, msg);
+    syscall(SYSCALL_ECHO, msg);
 }
 
 void syscall_puts(char *str)
 {
-    syscall(4, str);
+    syscall(SYSCALL_PUTS, str);
 }
 
 uint64_t syscall_get_uptime()
 {
     uint64_t result;
-    syscall(5, &result);
+    syscall(SYSCALL_GET_UPTIME, &result);
 
     return result;
 }
@@ -37,7 +37,7 @@ void syscall_file_open(char *filename, uint64_t *out_fid)
         .data = filename,
     };
 
-    syscall(SYSCALL_FILE_OPS_CODE, &data);
+    syscall(SYSCALL_FILE_OPS, &data);
     *out_fid = data.id;
 }
 
@@ -50,7 +50,7 @@ uint64_t syscall_file_read(uint64_t fid, void *buffer, uint64_t buffer_len)
         .data_len = buffer_len,
     };
 
-    syscall(SYSCALL_FILE_OPS_CODE, &data);
+    syscall(SYSCALL_FILE_OPS, &data);
 
     return data.data_len;
 }
@@ -64,7 +64,7 @@ uint64_t syscall_file_seek(uint64_t fid, uint64_t offset, int whence)
         .data_len = offset,
     };
 
-    syscall(SYSCALL_FILE_OPS_CODE, &data);
+    syscall(SYSCALL_FILE_OPS, &data);
 
     return data.data_len;
 }
@@ -76,7 +76,7 @@ uint64_t syscall_file_tell(uint64_t fid)
         .action = SYS_FILE_TELL,
     };
 
-    syscall(SYSCALL_FILE_OPS_CODE, &data);
+    syscall(SYSCALL_FILE_OPS, &data);
 
     return data.data_len;
 }
@@ -94,7 +94,7 @@ void syscall_draw_window(uint32_t width, uint32_t height, uint32_t *buffer)
         .buffer = buffer,
     };
 
-    syscall(7, &data);
+    syscall(SYSCALL_DRAW_WINDOW, &data);
 }
 
 void syscall_get_key(uint32_t *last_key, uint32_t *was_pressed)
@@ -104,7 +104,7 @@ void syscall_get_key(uint32_t *last_key, uint32_t *was_pressed)
         .was_pressed = 0,
     };
 
-    syscall(8, &data);
+    syscall(SYSCALL_GET_KEY, &data);
 
     *last_key = data.last_key;
     *was_pressed = data.was_pressed;

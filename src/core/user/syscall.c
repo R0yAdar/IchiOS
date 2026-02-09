@@ -187,13 +187,13 @@ void syscall_init(framebuffer *fb)
     key_events = (key_event *)kmalloc(sizeof(key_event) * KEY_EVENTS_QUEUE_SIZE);
     kybrd_set_event_callback(kybrd_press_callback);
 
-    _syscalls[0] = (syscall_handler_t)sh_hello;
-    _syscalls[1] = (syscall_handler_t)sh_sleep;
-    _syscalls[2] = (syscall_handler_t)sh_echo;
-    _syscalls[3] = (syscall_handler_t)sh_draw_char;
-    _syscalls[4] = (syscall_handler_t)sh_puts;
-    _syscalls[5] = (syscall_handler_t)sh_get_uptime;
-    _syscalls[6] = (syscall_handler_t)sh_file_ops;
-    _syscalls[7] = (syscall_handler_t)sh_draw_window;
-    _syscalls[8] = (syscall_handler_t)sh_get_key;
+    _syscalls[SYSCALL_HELLO] = (syscall_handler_t)sh_hello;
+    _syscalls[SYSCALL_SLEEP] = (syscall_handler_t)sh_sleep;
+    _syscalls[SYSCALL_ECHO] = (syscall_handler_t)sh_echo;
+    _syscalls[SYSCALL_DRAW_CHAR] = (syscall_handler_t)sh_draw_char;
+    _syscalls[SYSCALL_PUTS] = (syscall_handler_t)sh_puts;
+    _syscalls[SYSCALL_GET_UPTIME] = (syscall_handler_t)sh_get_uptime;
+    _syscalls[SYSCALL_FILE_OPS] = (syscall_handler_t)sh_file_ops;
+    _syscalls[SYSCALL_DRAW_WINDOW] = (syscall_handler_t)sh_draw_window;
+    _syscalls[SYSCALL_GET_KEY] = (syscall_handler_t)sh_get_key;
 }

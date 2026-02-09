@@ -6,7 +6,15 @@ typedef unsigned int uint32_t;
 typedef unsigned long long uint64_t;
 #endif
 
-#define SYSCALL_FILE_OPS_CODE 0x6
+#define SYSCALL_HELLO 0x0
+#define SYSCALL_SLEEP 0x1
+#define SYSCALL_ECHO 0x2
+#define SYSCALL_DRAW_CHAR 0x3
+#define SYSCALL_PUTS 0x4
+#define SYSCALL_GET_UPTIME 0x5
+#define SYSCALL_FILE_OPS 0x6
+#define SYSCALL_DRAW_WINDOW 0x7
+#define SYSCALL_GET_KEY 0x8
 
 typedef struct
 {
