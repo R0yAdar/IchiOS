@@ -21,15 +21,6 @@ typedef struct
     uint16_t compressed_length;
 } kmalloc_entry_metadata_t;
 
-#define KMALLOC_FREELIST_PAGE_MAX_ADDR 500
-
-typedef struct kmalloc_freelist_page
-{
-    void *addresses[KMALLOC_FREELIST_PAGE_MAX_ADDR];
-    uint16_t count;
-    struct kmalloc_freelist_page *next;
-} kmalloc_freelist_page_t;
-
 #pragma pack(pop)
 
 /// Utility functions
@@ -120,62 +111,30 @@ kmalloc_entry_metadata_t *ke_get_metadata(void *addr)
 
 /// Free-list (LEN=9, for each block-size)
 
-kmalloc_freelist_page_t *_kmalloc_freelist[KMALLOC_FIXED_BLOCK_BRACKETS_COUNT] = {0};
-
-kmalloc_freelist_page_t *km_fl_page_create()
-{
-    kmalloc_freelist_page_t *p = (kmalloc_freelist_page_t *)kpage_alloc(1);
-    if (!p)
-        return NULL;
-
-    p->count = 0;
-    p->next = NULL;
-
-    for (size_t i = 0; i < KMALLOC_FREELIST_PAGE_MAX_ADDR; i++)
-    {
-        p->addresses[i] = NULL;
-    }
-
-    return p;
-}
+uint64_t _kmalloc_freelist[KMALLOC_FIXED_BLOCK_BRACKETS_COUNT] = {0};
 
 void km_fl_add(uint16_t size, void *vaddr)
 {
     uint8_t index = km_fl_size_to_index(size);
-    kmalloc_freelist_page_t *current = _kmalloc_freelist[index];
 
-    if (current == NULL)
-    {
-        current = km_fl_page_create();
-    }
-    else if (current->count == KMALLOC_FREELIST_PAGE_MAX_ADDR)
-    {
-        kmalloc_freelist_page_t *new_page = km_fl_page_create();
-        new_page->next = current;
-        current = new_page;
-    }
-
-    current->addresses[current->count++] = vaddr;
-    _kmalloc_freelist[index] = current;
+    *(uint64_t *)(vaddr) = _kmalloc_freelist[index];
+    _kmalloc_freelist[index] = (uint64_t)vaddr;
 }
 
 void *km_fl_get(uint16_t size)
 {
     uint8_t index = km_fl_size_to_index(size);
-    kmalloc_freelist_page_t *current = _kmalloc_freelist[index];
 
-    if (current == NULL || current->count == 0)
-        return NULL;
+    uint64_t current = _kmalloc_freelist[index];
 
-    void *addr = current->addresses[--current->count];
-
-    if (current->count == 0 && current->next != NULL)
+    if (current)
     {
-        _kmalloc_freelist[index] = current->next;
-        kpage_free((void *)current, 1);
+        _kmalloc_freelist[index] = *(uint64_t *)current;
+        *(uint64_t *)current = 0;
+        return (void *)current;
     }
 
-    return addr;
+    return NULL;
 }
 
 void km_setup_page_memory(void *page, kmalloc_entry_metadata_t *metadata)
