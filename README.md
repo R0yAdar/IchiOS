@@ -2,7 +2,7 @@
 My **first** (and probably last) attempt at writing an OS (x86_64)
 
 ## Features
-* Legacy Bootloader (2 stage)
+* Legacy Bootloader (2 stage), Higher Half x64 Kernel
 * Basics: IDT, PIC, PIT
 * Drivers: PS/2 (keyboard), PCI, EXT2 (+VFS), AHCI, Framebuffer (VESA), VGA, Serial (QEMU output)
 * VMM, PMM, Basic Memory Protection via Paging
